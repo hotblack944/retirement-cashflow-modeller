@@ -762,6 +762,7 @@
 // =============================================
 const TAX = {
   personalAllowance: 12570,
+  paWithdrawalStart: 100000,  // Personal allowance withdrawal threshold
   basicRateLimit: 50270,
   higherRateLimit: 125140,
   basicRate: 0.20,
@@ -812,11 +813,11 @@ function upratedThresholds(inflFactor, uprating, freezeUntil, currentYear) {
   else if (uprating === 'cpi_half') f = Math.pow(postFreezeInflFactor, 0.5);
   // 'frozen' => f stays 1 regardless
   return {
-    personalAllowance:  Math.round(TAX.personalAllowance  * f),
-    basicRateLimit:     Math.round(TAX.basicRateLimit      * f),
-    higherRateLimit:    Math.round(TAX.higherRateLimit     * f),
-    NIthreshold:        Math.round(TAX.NIthreshold         * f),
-    paWithdrawalStart:  Math.round(100000                  * f),
+    personalAllowance:  Math.round(TAX.personalAllowance * f),
+    basicRateLimit:     Math.round(TAX.basicRateLimit    * f),
+    higherRateLimit:    Math.round(TAX.higherRateLimit   * f),
+    NIthreshold:        Math.round(TAX.NIthreshold       * f),
+    paWithdrawalStart:  Math.round(TAX.paWithdrawalStart * f),
   };
 }
 
@@ -1660,12 +1661,20 @@ window.addEventListener('load', () => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('input', saveInputs);
-      // Prevent scroll wheel from changing number input values
-      if (el.type === 'number') {
-        el.addEventListener('wheel', e => { e.preventDefault(); }, { passive: false });
-      }
     }
   });
+
+  // Delegate scroll wheel prevention for number inputs
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    sidebar.addEventListener('wheel', function(e) {
+      const active = document.activeElement;
+      if (active && active.type === 'number' && sidebar.contains(active)) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+
   setTimeout(runModel, 300);
 });
 </script>
