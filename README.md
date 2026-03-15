@@ -6,5 +6,8 @@ All projections are estimates based on the information you provide and cannot pr
 
 You should consider seeking advice from a qualified financial adviser before taking any action based on the outputs of this tool. You are responsible for verifying the accuracy of your inputs and for any decisions you make using this modeller.
 
+## Introduction
 
 https://hotblack944.github.io/retirement-cashflow-modeller/
+
+![screenshot](screenshot.png)
