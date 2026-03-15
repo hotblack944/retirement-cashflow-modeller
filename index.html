@@ -5,7 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Retirement Cashflow Modeller</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+// Load Chart.js with multiple CDN fallbacks for corporate/restricted networks
+(function() {
+  var cdns = [
+    'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+    'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+    'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js'
+  ];
+  var idx = 0;
+  function tryNext() {
+    if (idx >= cdns.length) {
+      document.getElementById('chart-load-error').style.display = 'block';
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = cdns[idx++];
+    s.onload = function() { document.getElementById('chart-load-error').style.display = 'none'; };
+    s.onerror = tryNext;
+    document.head.appendChild(s);
+  }
+  tryNext();
+})();
+</script>
+<style>
+  #chart-load-error { background:#c97e7e22; border:1px solid #c97e7e; border-radius:4px; padding:10px 14px; margin:10px 0; font-size:0.82rem; color:#c97e7e; display:none; }
+</style>
 <style>
   :root {
     --bg: #0f1117;
@@ -752,7 +777,52 @@
       </svg>
       <p>Configure your details and click <strong>Run Projection</strong></p>
     </div>
-    <div id="results" style="display:none"></div>
+    <div id="results" style="display:none">
+      <div id="chart-load-error">⚠ Chart.js could not be loaded from any CDN. Charts will not display. Check your network/firewall settings or try a different browser.</div>
+      <!-- Static canvas elements - never recreated, only updated -->
+      <div id="summary-cards-container" class="summary-cards" style="margin-bottom:28px"></div>
+      <div class="chart-row">
+        <div class="chart-box">
+          <div class="chart-title">Annual Cashflow <span>Net income vs target spending</span></div>
+          <canvas id="cashflow-chart" height="200"></canvas>
+          <div class="legend" style="margin-top:12px" id="cashflow-legend"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-title">Tax Efficiency <span>First year breakdown</span></div>
+          <canvas id="tax-donut" height="200"></canvas>
+        </div>
+      </div>
+      <div class="chart-full">
+        <div class="chart-title">Asset Balances Over Time <span>Pension pots and ISAs</span></div>
+        <canvas id="assets-chart" height="150"></canvas>
+        <div class="legend" style="margin-top:12px" id="assets-legend"></div>
+      </div>
+      <div class="chart-full">
+        <div class="chart-title">Annual Tax Paid <span>Income tax both persons combined</span></div>
+        <canvas id="tax-chart" height="100"></canvas>
+      </div>
+      <div class="section-header" style="margin-bottom:14px; padding:12px 0; font-size:0.8rem; letter-spacing:0.1em; color:var(--accent); text-transform:uppercase; border-bottom:1px solid var(--border)">
+        Tax Efficiency Insights
+      </div>
+      <div class="tips" id="tips-container"></div>
+      <div class="chart-title" style="margin-bottom:12px; margin-top:4px">
+        Year-by-Year Detail
+        <span style="cursor:pointer; color:var(--accent2)" onclick="toggleTable()">▼ Show / Hide</span>
+      </div>
+      <div class="tax-table-wrap" id="year-table" style="display:none">
+        <table>
+          <thead>
+            <tr>
+              <th>Year</th><th>Ages</th><th>Salary (gross)</th><th>Sacrifice</th>
+              <th>Ee Contrib</th><th>Er Contrib</th><th>Pension Draw</th><th>ISA Draw</th>
+              <th>DB+SP</th><th>PCLS</th><th>Tax+NI</th><th>Net Income</th>
+              <th>Spending</th><th>Shortfall</th><th>Total Assets</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -762,6 +832,7 @@
 // =============================================
 const TAX = {
   personalAllowance: 12570,
+  paWithdrawalStart: 100000,  // Personal allowance withdrawal threshold
   basicRateLimit: 50270,
   higherRateLimit: 125140,
   basicRate: 0.20,
@@ -812,11 +883,11 @@ function upratedThresholds(inflFactor, uprating, freezeUntil, currentYear) {
   else if (uprating === 'cpi_half') f = Math.pow(postFreezeInflFactor, 0.5);
   // 'frozen' => f stays 1 regardless
   return {
-    personalAllowance:  Math.round(TAX.personalAllowance  * f),
-    basicRateLimit:     Math.round(TAX.basicRateLimit      * f),
-    higherRateLimit:    Math.round(TAX.higherRateLimit     * f),
-    NIthreshold:        Math.round(TAX.NIthreshold         * f),
-    paWithdrawalStart:  Math.round(100000                  * f),
+    personalAllowance:  Math.round(TAX.personalAllowance * f),
+    basicRateLimit:     Math.round(TAX.basicRateLimit    * f),
+    higherRateLimit:    Math.round(TAX.higherRateLimit   * f),
+    NIthreshold:        Math.round(TAX.NIthreshold       * f),
+    paWithdrawalStart:  Math.round(TAX.paWithdrawalStart * f),
   };
 }
 
@@ -1279,242 +1350,183 @@ function renderResults(results, inp) {
   const shortfallYears = shortfall.filter(s=>s>100).length;
   const totalPCLSAllYears = pclsAmts.reduce((a,b)=>a+b,0);
 
-  panel.innerHTML = `
-    <!-- SUMMARY CARDS -->
-    <div class="summary-cards">
-      <div class="card accent">
-        <div class="card-label">Total Assets Now</div>
-        <div class="card-value">${fmt(inp.persons[0].dc + inp.persons[1].dc + inp.persons[0].isa + inp.persons[1].isa)}</div>
-        <div class="card-sub">Pension + ISA combined</div>
-      </div>
-      <div class="card ${fundDepletionIdx === -1 ? 'good' : 'warn'}">
-        <div class="card-label">Fund Depletion</div>
-        <div class="card-value">${fundDepletionYear}</div>
-        <div class="card-sub">${fundDepletionIdx === -1 ? 'Survives to ' + inp.endAge : 'Age concern — review drawdown'}</div>
-      </div>
-      <div class="card p2">
-        <div class="card-label">Total Tax (lifetime)</div>
-        <div class="card-value">${fmt(totalTaxPaid)}</div>
-        <div class="card-sub">Avg ${fmt(avgTax)}/yr</div>
-      </div>
-      <div class="card ${shortfallYears > 0 ? 'warn' : 'good'}">
-        <div class="card-label">Shortfall Years</div>
-        <div class="card-value">${shortfallYears}</div>
-        <div class="card-sub">${shortfallYears === 0 ? 'Spending target fully met' : 'Years income < spending'}</div>
-      </div>
-      <div class="card accent">
-        <div class="card-label">Total PCLS (lifetime)</div>
-        <div class="card-value">${fmt(totalPCLSAllYears)}</div>
-        <div class="card-sub">Tax-free lump sum across all years</div>
-      </div>
+  // Update summary cards
+  document.getElementById('summary-cards-container').innerHTML = `
+    <div class="card accent">
+      <div class="card-label">Total Assets Now</div>
+      <div class="card-value">${fmt(inp.persons[0].dc + inp.persons[1].dc + inp.persons[0].isa + inp.persons[1].isa)}</div>
+      <div class="card-sub">Pension + ISA combined</div>
     </div>
+    <div class="card ${fundDepletionIdx === -1 ? 'good' : 'warn'}">
+      <div class="card-label">Fund Depletion</div>
+      <div class="card-value">${fundDepletionYear}</div>
+      <div class="card-sub">${fundDepletionIdx === -1 ? 'Survives to ' + inp.endAge : 'Age concern — review drawdown'}</div>
+    </div>
+    <div class="card p2">
+      <div class="card-label">Total Tax (lifetime)</div>
+      <div class="card-value">${fmt(totalTaxPaid)}</div>
+      <div class="card-sub">Avg ${fmt(avgTax)}/yr</div>
+    </div>
+    <div class="card ${shortfallYears > 0 ? 'warn' : 'good'}">
+      <div class="card-label">Shortfall Years</div>
+      <div class="card-value">${shortfallYears}</div>
+      <div class="card-sub">${shortfallYears === 0 ? 'Spending target fully met' : 'Years income < spending'}</div>
+    </div>
+    <div class="card accent">
+      <div class="card-label">Total PCLS (lifetime)</div>
+      <div class="card-value">${fmt(totalPCLSAllYears)}</div>
+      <div class="card-sub">Tax-free lump sum across all years</div>
+    </div>`;
 
-    <!-- CASHFLOW CHART + TAX PIE -->
-    <div class="chart-row">
-      <div class="chart-box">
-        <div class="chart-title">Annual Cashflow <span>Net income vs target spending</span></div>
-        <canvas id="cashflow-chart" height="200"></canvas>
-        <div class="legend" style="margin-top:12px">
-          <div class="legend-item"><div class="legend-dot" style="background:rgba(90,160,130,0.75)"></div>Employment (gross)</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>Pension Drawdown</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>ISA Withdrawal</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>DB Pension</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--sp)"></div>State Pension</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>PCLS</div>
-          <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,80,0.7)"></div>Spending</div>
-        </div>
-      </div>
-      <div class="chart-box">
-        <div class="chart-title">Tax Efficiency <span>First year breakdown</span></div>
-        <canvas id="tax-donut" height="200"></canvas>
-      </div>
-    </div>
+  // Update legends
+  document.getElementById('cashflow-legend').innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(90,160,130,0.75)"></div>Employment (gross)</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>Pension Drawdown</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>ISA Withdrawal</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>DB Pension</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--sp)"></div>State Pension</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>PCLS</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,80,0.7)"></div>Spending</div>`;
 
-    <!-- ASSET BALANCE CHART -->
-    <div class="chart-full">
-      <div class="chart-title">Asset Balances Over Time <span>Pension pots and ISAs</span></div>
-      <canvas id="assets-chart" height="150"></canvas>
-      <div class="legend" style="margin-top:12px">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>P1 Pension</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>P2 Pension</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>P1 ISA</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>P2 ISA</div>
-      </div>
-    </div>
+  document.getElementById('assets-legend').innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>P1 Pension</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>P2 Pension</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>P1 ISA</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>P2 ISA</div>`;
 
-    <!-- TAX OVER TIME -->
-    <div class="chart-full">
-      <div class="chart-title">Annual Tax Paid <span>Income tax both persons combined</span></div>
-      <canvas id="tax-chart" height="100"></canvas>
-    </div>
-
-    <!-- OPTIMISATION TIPS -->
-    <div class="section-header" style="margin-bottom:14px; padding:12px 0; font-size:0.8rem; letter-spacing:0.1em; color:var(--accent); text-transform:uppercase; border-bottom:1px solid var(--border)">
-      Tax Efficiency Insights
-    </div>
-    <div class="tips" id="tips-container"></div>
-
-    <!-- YEAR-BY-YEAR TABLE -->
-    <div class="chart-title" style="margin-bottom:12px; margin-top:4px">
-      Year-by-Year Detail
-      <span style="cursor:pointer; color:var(--accent2)" onclick="toggleTable()">▼ Show / Hide</span>
-    </div>
-    <div class="tax-table-wrap" id="year-table" style="display:none">
-      <table>
-        <thead>
-          <tr>
-            <th>Year</th>
-            <th>Ages</th>
-            <th>Salary (gross)</th>
-            <th>Sacrifice</th>
-            <th>Ee Contrib</th>
-            <th>Er Contrib</th>
-            <th>Pension Draw</th>
-            <th>ISA Draw</th>
-            <th>DB+SP</th>
-            <th>PCLS</th>
-            <th>Tax+NI</th>
-            <th>Net Income</th>
-            <th>Spending</th>
-            <th>Shortfall</th>
-            <th>Total Assets</th>
-          </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
-    </div>
-  `;
-
-  // ---- CASHFLOW STACKED BAR ----
-  destroyChart('cashflow');
-  chartInstances['cashflow'] = new Chart(document.getElementById('cashflow-chart'), {
-    type: 'bar',
-    data: {
-      labels: years,
-      datasets: [
-        { label: 'Employment (gross)', data: employmentGrossArr, backgroundColor: 'rgba(90,160,130,0.75)', stack: 'income' },
-        { label: 'Pension Drawdown', data: pensionDraw, backgroundColor: 'rgba(200,169,110,0.75)', stack: 'income' },
-        { label: 'ISA Withdrawal', data: isaWithdraw, backgroundColor: 'rgba(143,176,122,0.75)', stack: 'income' },
-        { label: 'DB Pension', data: dbIncome, backgroundColor: 'rgba(176,122,217,0.75)', stack: 'income' },
-        { label: 'State Pension', data: spIncome, backgroundColor: 'rgba(201,126,126,0.75)', stack: 'income' },
-        { label: 'PCLS', data: pclsAmts, backgroundColor: 'rgba(126,184,201,0.75)', stack: 'income' },
-        { label: 'Spending Target', data: spending, type: 'line', borderColor: 'rgba(224,120,80,0.9)', borderWidth: 2, pointRadius: 0, borderDash: [4,3], fill: false, stack: undefined },
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: function(items) {
-              const i = items[0].dataIndex;
-              return `${years[i]}  ·  P1 age ${agesP1[i]}  ·  P2 age ${agesP2[i]}`;
-            },
-            label: function(item) {
-              if (item.parsed.y === 0) return null;
-              return ` ${item.dataset.label}: ${fmt(item.parsed.y)}`;
+  // Defer chart creation until Edge/all browsers have rendered the new canvas elements until Edge/all browsers have rendered the new canvas elements
+  requestAnimationFrame(() => {
+    // ---- CASHFLOW STACKED BAR ----
+    destroyChart('cashflow');
+    chartInstances['cashflow'] = new Chart(document.getElementById('cashflow-chart'), {
+      type: 'bar',
+      data: {
+        labels: years,
+        datasets: [
+          { label: 'Employment (gross)', data: employmentGrossArr, backgroundColor: 'rgba(90,160,130,0.75)', stack: 'income' },
+          { label: 'Pension Drawdown', data: pensionDraw, backgroundColor: 'rgba(200,169,110,0.75)', stack: 'income' },
+          { label: 'ISA Withdrawal', data: isaWithdraw, backgroundColor: 'rgba(143,176,122,0.75)', stack: 'income' },
+          { label: 'DB Pension', data: dbIncome, backgroundColor: 'rgba(176,122,217,0.75)', stack: 'income' },
+          { label: 'State Pension', data: spIncome, backgroundColor: 'rgba(201,126,126,0.75)', stack: 'income' },
+          { label: 'PCLS', data: pclsAmts, backgroundColor: 'rgba(126,184,201,0.75)', stack: 'income' },
+          { label: 'Spending Target', data: spending, type: 'line', borderColor: 'rgba(224,120,80,0.9)', borderWidth: 2, pointRadius: 0, borderDash: [4,3], fill: false, stack: undefined },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: function(items) {
+                const i = items[0].dataIndex;
+                return `${years[i]}  ·  P1 age ${agesP1[i]}  ·  P2 age ${agesP2[i]}`;
+              },
+              label: function(item) {
+                if (item.parsed.y === 0) return null;
+                return ` ${item.dataset.label}: ${fmt(item.parsed.y)}`;
+              }
             }
           }
+        },
+        scales: {
+          x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font: {size:11} }, grid: { color: '#1e2230' } },
+          y: { ticks: { color: '#7a8099', callback: v => fmt(v), font: {size:11} }, grid: { color: '#1e2230' } }
         }
-      },
-      scales: {
-        x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font: {size:11} }, grid: { color: '#1e2230' } },
-        y: { ticks: { color: '#7a8099', callback: v => fmt(v), font: {size:11} }, grid: { color: '#1e2230' } }
       }
-    }
-  });
+    });
 
-  // ---- ASSET BALANCE LINE ----
-  destroyChart('assets');
-  chartInstances['assets'] = new Chart(document.getElementById('assets-chart'), {
-    type: 'line',
-    data: {
-      labels: years,
-      datasets: [
-        { label: 'P1 Pension', data: dc0, borderColor: 'rgba(200,169,110,0.9)', backgroundColor: 'rgba(200,169,110,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
-        { label: 'P2 Pension', data: dc1, borderColor: 'rgba(126,184,201,0.9)', backgroundColor: 'rgba(126,184,201,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
-        { label: 'P1 ISA', data: isa0, borderColor: 'rgba(143,176,122,0.9)', backgroundColor: 'rgba(143,176,122,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
-        { label: 'P2 ISA', data: isa1, borderColor: 'rgba(176,122,217,0.9)', backgroundColor: 'rgba(176,122,217,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
-      ]
-    },
-    options: {
-      responsive: true,
-      interaction: { mode: 'index', intersect: false },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            title: items => `${years[items[0].dataIndex]}  ·  P1 age ${agesP1[items[0].dataIndex]}  ·  P2 age ${agesP2[items[0].dataIndex]}`,
-            label: item => item.parsed.y > 0 ? ` ${item.dataset.label}: ${fmt(item.parsed.y)}` : null,
-            footer: items => {
-              const i = items[0].dataIndex;
-              const total = (dc0[i]||0) + (dc1[i]||0) + (isa0[i]||0) + (isa1[i]||0);
-              return `Total: ${fmt(total)}`;
+    // ---- ASSET BALANCE LINE ----
+    destroyChart('assets');
+    chartInstances['assets'] = new Chart(document.getElementById('assets-chart'), {
+      type: 'line',
+      data: {
+        labels: years,
+        datasets: [
+          { label: 'P1 Pension', data: dc0, borderColor: 'rgba(200,169,110,0.9)', backgroundColor: 'rgba(200,169,110,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+          { label: 'P2 Pension', data: dc1, borderColor: 'rgba(126,184,201,0.9)', backgroundColor: 'rgba(126,184,201,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+          { label: 'P1 ISA', data: isa0, borderColor: 'rgba(143,176,122,0.9)', backgroundColor: 'rgba(143,176,122,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+          { label: 'P2 ISA', data: isa1, borderColor: 'rgba(176,122,217,0.9)', backgroundColor: 'rgba(176,122,217,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: items => `${years[items[0].dataIndex]}  ·  P1 age ${agesP1[items[0].dataIndex]}  ·  P2 age ${agesP2[items[0].dataIndex]}`,
+              label: item => item.parsed.y > 0 ? ` ${item.dataset.label}: ${fmt(item.parsed.y)}` : null,
+              footer: items => {
+                const i = items[0].dataIndex;
+                const total = (dc0[i]||0) + (dc1[i]||0) + (isa0[i]||0) + (isa1[i]||0);
+                return `Total: ${fmt(total)}`;
+              }
             }
           }
+        },
+        scales: {
+          x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font:{size:11} }, grid: { color: '#1e2230' } },
+          y: { ticks: { color: '#7a8099', callback: v => fmt(v), font:{size:11} }, grid: { color: '#1e2230' } }
         }
+      }
+    });
+
+    // ---- TAX LINE ----
+    destroyChart('tax');
+    chartInstances['tax'] = new Chart(document.getElementById('tax-chart'), {
+      type: 'line',
+      data: {
+        labels: years,
+        datasets: [
+          { label: 'Total Tax', data: totalTax, borderColor: 'rgba(224,120,80,0.9)', backgroundColor: 'rgba(224,120,80,0.1)', borderWidth: 2, pointRadius: 0, fill: true },
+        ]
       },
-      scales: {
-        x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font:{size:11} }, grid: { color: '#1e2230' } },
-        y: { ticks: { color: '#7a8099', callback: v => fmt(v), font:{size:11} }, grid: { color: '#1e2230' } }
-      }
-    }
-  });
-
-  // ---- TAX LINE ----
-  destroyChart('tax');
-  chartInstances['tax'] = new Chart(document.getElementById('tax-chart'), {
-    type: 'line',
-    data: {
-      labels: years,
-      datasets: [
-        { label: 'Total Tax', data: totalTax, borderColor: 'rgba(224,120,80,0.9)', backgroundColor: 'rgba(224,120,80,0.1)', borderWidth: 2, pointRadius: 0, fill: true },
-      ]
-    },
-    options: {
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font:{size:11} }, grid: { color: '#1e2230' } },
-        y: { ticks: { color: '#7a8099', callback: v => fmt(v), font:{size:11} }, grid: { color: '#1e2230' } }
-      }
-    }
-  });
-
-  // ---- TAX DONUT ----
-  const yr1 = results[0];
-  const yr1pensionGross = yr1.income[0] + yr1.income[1];
-  const yr1isaAmt = yr1.isaWithdrawal[0] + yr1.isaWithdrawal[1];
-  const yr1pcls = yr1.pcls[0] + yr1.pcls[1];
-  const yr1tax = yr1.totalTax;
-  const yr1net = yr1.netIncome;
-  destroyChart('tax-donut');
-  chartInstances['tax-donut'] = new Chart(document.getElementById('tax-donut'), {
-    type: 'doughnut',
-    data: {
-      labels: ['Net Income', 'Tax Paid', 'ISA (tax-free)', 'PCLS (tax-free)'],
-      datasets: [{
-        data: [
-          Math.max(0, yr1net - yr1isaAmt - yr1pcls),
-          yr1tax,
-          yr1isaAmt,
-          yr1pcls
-        ],
-        backgroundColor: ['rgba(200,169,110,0.8)', 'rgba(224,120,80,0.8)', 'rgba(143,176,122,0.8)', 'rgba(126,184,201,0.8)'],
-        borderWidth: 0,
-      }]
-    },
-    options: {
-      cutout: '65%',
-      plugins: {
-        legend: {
-          position: 'bottom',
-          labels: { color: '#7a8099', font: {size:11}, boxWidth: 12 }
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font:{size:11} }, grid: { color: '#1e2230' } },
+          y: { ticks: { color: '#7a8099', callback: v => fmt(v), font:{size:11} }, grid: { color: '#1e2230' } }
         }
       }
-    }
-  });
+    });
+
+    // ---- TAX DONUT ----
+    const yr1 = results[0];
+    const yr1pensionGross = yr1.income[0] + yr1.income[1];
+    const yr1isaAmt = yr1.isaWithdrawal[0] + yr1.isaWithdrawal[1];
+    const yr1pcls = yr1.pcls[0] + yr1.pcls[1];
+    const yr1tax = yr1.totalTax;
+    const yr1net = yr1.netIncome;
+    destroyChart('tax-donut');
+    chartInstances['tax-donut'] = new Chart(document.getElementById('tax-donut'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Net Income', 'Tax Paid', 'ISA (tax-free)', 'PCLS (tax-free)'],
+        datasets: [{
+          data: [
+            Math.max(0, yr1net - yr1isaAmt - yr1pcls),
+            yr1tax,
+            yr1isaAmt,
+            yr1pcls
+          ],
+          backgroundColor: ['rgba(200,169,110,0.8)', 'rgba(224,120,80,0.8)', 'rgba(143,176,122,0.8)', 'rgba(126,184,201,0.8)'],
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        cutout: '65%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: { color: '#7a8099', font: {size:11}, boxWidth: 12 }
+          }
+        }
+      }
+    });
+  }); // end requestAnimationFrame
 
   // ---- TIPS ----
   generateTips(results, inp);
@@ -1660,12 +1672,20 @@ window.addEventListener('load', () => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('input', saveInputs);
-      // Prevent scroll wheel from changing number input values
-      if (el.type === 'number') {
-        el.addEventListener('wheel', e => { e.preventDefault(); }, { passive: false });
-      }
     }
   });
+
+  // Delegate scroll wheel prevention for number inputs
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar) {
+    sidebar.addEventListener('wheel', function(e) {
+      const active = document.activeElement;
+      if (active && active.type === 'number' && sidebar.contains(active)) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+
   setTimeout(runModel, 300);
 });
 </script>
