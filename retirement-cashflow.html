@@ -1,0 +1,1673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retirement Cashflow Modeller</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #181c27;
+    --surface2: #1f2435;
+    --border: #2a2f42;
+    --accent: #c8a96e;
+    --accent2: #7eb8c9;
+    --accent3: #8fb07a;
+    --accent4: #c97e7e;
+    --text: #e8e4dc;
+    --text-muted: #7a8099;
+    --text-dim: #4a5068;
+    --p1: #c8a96e;
+    --p2: #7eb8c9;
+    --isa: #8fb07a;
+    --db: #b07ad9;
+    --sp: #c97e7e;
+    --tax: #e07850;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    padding: 28px 40px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+    background: var(--surface);
+  }
+  header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.7rem;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.02em;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  /* LAYOUT */
+  .app {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    min-height: calc(100vh - 73px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 0 0 40px 0;
+  }
+
+  .section-header {
+    padding: 18px 24px 12px;
+    font-family: 'Playfair Display', serif;
+    font-size: 0.85rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .person-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .person-tab {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    border: none;
+    background: none;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .person-tab.active {
+    color: var(--text);
+    background: var(--surface2);
+    border-bottom: 2px solid var(--accent);
+  }
+  .person-tab:first-child { border-right: 1px solid var(--border); }
+
+  .person-panel { display: none; }
+  .person-panel.active { display: block; }
+
+  /* FORM ELEMENTS */
+  .field-group {
+    padding: 14px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .field-group label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .field-row.trio {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .field-sub {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field-sub span {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="number"]:focus, input[type="text"]:focus, select:focus {
+    border-color: var(--accent);
+  }
+  select option { background: var(--surface2); }
+
+  input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .range-val {
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 500;
+    min-width: 38px;
+    text-align: right;
+  }
+
+  /* ASSUMPTIONS */
+  .assumptions-grid {
+    padding: 14px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* RUN BUTTON */
+  .run-btn {
+    margin: 16px 24px;
+    width: calc(100% - 48px);
+    padding: 14px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    font-family: 'Playfair Display', serif;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .run-btn:hover { opacity: 0.88; }
+  .run-btn:active { transform: scale(0.98); }
+
+  /* MAIN PANEL */
+  .main {
+    padding: 28px 32px;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  /* SUMMARY CARDS */
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 14px;
+    margin-bottom: 28px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 18px;
+  }
+  .card-label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .card-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  .card-sub {
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    margin-top: 3px;
+  }
+  .card.accent .card-value { color: var(--accent); }
+  .card.p2 .card-value { color: var(--accent2); }
+  .card.good .card-value { color: var(--accent3); }
+  .card.warn .card-value { color: var(--accent4); }
+
+  /* CHARTS */
+  .chart-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+  .chart-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+  }
+  .chart-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.92rem;
+    color: var(--text);
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .chart-title span {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .chart-full {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 18px;
+  }
+
+  /* TAX TABLE */
+  .tax-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 18px;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  thead tr {
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    padding: 8px 10px;
+    text-align: right;
+    color: var(--text-muted);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  th:first-child { text-align: left; }
+  td {
+    padding: 7px 10px;
+    text-align: right;
+    color: var(--text);
+    border-bottom: 1px solid #1e2230;
+  }
+  td:first-child { text-align: left; color: var(--text-muted); }
+  tr:hover td { background: var(--surface2); }
+  tr.highlight td { color: var(--accent); }
+
+  /* OPTIMISATION TIPS */
+  .tips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .tip-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 14px 16px;
+  }
+  .tip-card.info { border-left-color: var(--accent2); }
+  .tip-card.warn { border-left-color: var(--accent4); }
+  .tip-card.good { border-left-color: var(--accent3); }
+  .tip-title {
+    font-weight: 500;
+    font-size: 0.82rem;
+    margin-bottom: 5px;
+    color: var(--text);
+  }
+  .tip-body {
+    font-size: 0.77rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  /* PLACEHOLDER */
+  .placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: var(--text-dim);
+    gap: 12px;
+    text-align: center;
+  }
+  .placeholder svg { opacity: 0.2; }
+  .placeholder p { font-size: 0.9rem; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 320px 1fr; }
+    .summary-cards { grid-template-columns: repeat(2, 1fr); }
+    .chart-row { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 750px) {
+    .app { grid-template-columns: 1fr; }
+    header { padding: 18px 20px; flex-direction: column; gap: 4px; }
+    .main { padding: 18px 16px; }
+    .tips { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Retirement Cashflow Modeller</h1>
+  <p>UK · Couples · Tax-efficient drawdown planning</p>
+</header>
+
+<div class="app">
+  <!-- ====== SIDEBAR ====== -->
+  <aside class="sidebar">
+
+    <!-- PERSON TABS -->
+    <div class="person-tabs">
+      <button class="person-tab active" onclick="switchPerson(0)">Person 1</button>
+      <button class="person-tab" onclick="switchPerson(1)">Person 2</button>
+    </div>
+
+    <button class="run-btn" onclick="runModel()" style="margin:10px 18px;width:calc(100% - 36px)">▶ Run Projection</button>
+    <!-- PERSON 1 -->
+    <div class="person-panel active" id="panel-0">
+      <div class="section-header">Personal Details</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Current Age</span>
+            <input type="number" id="p0-age" value="58" min="18" max="80">
+          </div>
+          <div class="field-sub"><span>Retirement Age</span>
+            <input type="number" id="p0-retage" value="60" min="55" max="80">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Pensions (DC / SIPP)</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Current Pot (£)</span>
+            <input type="number" id="p0-dc" value="450000" step="1000">
+          </div>
+          <div class="field-sub"><span>Annual Contrib. (£)</span>
+            <input type="number" id="p0-dccontrib" value="0" step="500">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>PCLS Already Taken (£)</span>
+            <input type="number" id="p0-pclstaken" value="0" step="1000">
+          </div>
+          <div class="field-sub"><span>PCLS → ISA (£/yr, max £20k)</span>
+            <input type="number" id="p0-pclstoisa" value="0" step="1000" min="0" max="20000">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Defined Benefit Pension</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Initial Annual Income (£)</span>
+            <input type="number" id="p0-db" value="0" step="500">
+          </div>
+          <div class="field-sub"><span>DB Start Age</span>
+            <input type="number" id="p0-dbage" value="60" min="55" max="75">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Reduced Amount (£, 0=none)</span>
+            <input type="number" id="p0-dbreduced" value="0" step="500">
+          </div>
+          <div class="field-sub"><span>Reduction Age</span>
+            <input type="number" id="p0-dbreducedage" value="67" min="55" max="80">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">State Pension</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Weekly Amount (£)</span>
+            <input type="number" id="p0-sp" value="221.20" step="0.10">
+          </div>
+          <div class="field-sub"><span>State Pension Age</span>
+            <input type="number" id="p0-spage" value="67" min="60" max="70">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">ISA</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>ISA Balance (£)</span>
+            <input type="number" id="p0-isa" value="120000" step="1000">
+          </div>
+          <div class="field-sub"><span>Annual ISA Add (£)</span>
+            <input type="number" id="p0-isacontrib" value="0" step="500">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Employment</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Gross Salary (£/yr)</span>
+            <input type="number" id="p0-salary" value="0" step="1000">
+          </div>
+          <div class="field-sub"><span>Salary Growth %/yr</span>
+            <input type="number" id="p0-salarygrowth" value="2.5" step="0.5" min="0" max="15">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Employee Contrib %</span>
+            <input type="number" id="p0-empcontribpct" value="0" step="0.5" min="0" max="50">
+          </div>
+          <div class="field-sub"><span>Employer Contrib %</span>
+            <input type="number" id="p0-employer" value="0" step="0.5" min="0" max="50">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Ee Contrib Via</span>
+            <select id="p0-empcontribvia">
+              <option value="posttax">Post-tax</option>
+              <option value="sacrifice">Salary Sacrifice</option>
+            </select>
+          </div>
+          <div class="field-sub"><span>Additional Sacrifice (£/yr)</span>
+            <input type="number" id="p0-sacrifice" value="0" step="500">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PERSON 2 -->
+    <div class="person-panel" id="panel-1">
+      <div class="section-header">Personal Details</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Current Age</span>
+            <input type="number" id="p1-age" value="55" min="18" max="80">
+          </div>
+          <div class="field-sub"><span>Retirement Age</span>
+            <input type="number" id="p1-retage" value="57" min="55" max="80">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Pensions (DC / SIPP)</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Current Pot (£)</span>
+            <input type="number" id="p1-dc" value="180000" step="1000">
+          </div>
+          <div class="field-sub"><span>Annual Contrib. (£)</span>
+            <input type="number" id="p1-dccontrib" value="0" step="500">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>PCLS Already Taken (£)</span>
+            <input type="number" id="p1-pclstaken" value="0" step="1000">
+          </div>
+          <div class="field-sub"><span>PCLS → ISA (£/yr, max £20k)</span>
+            <input type="number" id="p1-pclstoisa" value="0" step="1000" min="0" max="20000">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Defined Benefit Pension</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Initial Annual Income (£)</span>
+            <input type="number" id="p1-db" value="8000" step="500">
+          </div>
+          <div class="field-sub"><span>DB Start Age</span>
+            <input type="number" id="p1-dbage" value="60" min="55" max="75">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Reduced Amount (£, 0=none)</span>
+            <input type="number" id="p1-dbreduced" value="0" step="500">
+          </div>
+          <div class="field-sub"><span>Reduction Age</span>
+            <input type="number" id="p1-dbreducedage" value="67" min="55" max="80">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">State Pension</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Weekly Amount (£)</span>
+            <input type="number" id="p1-sp" value="200.00" step="0.10">
+          </div>
+          <div class="field-sub"><span>State Pension Age</span>
+            <input type="number" id="p1-spage" value="67" min="60" max="70">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">ISA</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>ISA Balance (£)</span>
+            <input type="number" id="p1-isa" value="60000" step="1000">
+          </div>
+          <div class="field-sub"><span>Annual ISA Add (£)</span>
+            <input type="number" id="p1-isacontrib" value="0" step="500">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-header">Employment</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Gross Salary (£/yr)</span>
+            <input type="number" id="p1-salary" value="0" step="1000">
+          </div>
+          <div class="field-sub"><span>Salary Growth %/yr</span>
+            <input type="number" id="p1-salarygrowth" value="2.5" step="0.5" min="0" max="15">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Employee Contrib %</span>
+            <input type="number" id="p1-empcontribpct" value="0" step="0.5" min="0" max="50">
+          </div>
+          <div class="field-sub"><span>Employer Contrib %</span>
+            <input type="number" id="p1-employer" value="0" step="0.5" min="0" max="50">
+          </div>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span>Ee Contrib Via</span>
+            <select id="p1-empcontribvia">
+              <option value="posttax">Post-tax</option>
+              <option value="sacrifice">Salary Sacrifice</option>
+            </select>
+          </div>
+          <div class="field-sub"><span>Additional Sacrifice (£/yr)</span>
+            <input type="number" id="p1-sacrifice" value="0" step="500">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHARED SETTINGS -->
+    <div class="section-header">Spending & Goals</div>
+    <div class="field-group">
+      <div class="field-row">
+        <div class="field-sub"><span>Annual Spending (£)</span>
+          <input type="number" id="spending" value="42000" step="500">
+        </div>
+        <div class="field-sub"><span>Model to Age</span>
+          <input type="number" id="endage" value="95" min="75" max="100">
+        </div>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-row">
+        <div class="field-sub"><span>Spending Reduction %</span>
+          <input type="number" id="spend-reduction-pct" value="0" min="0" max="50" step="1">
+        </div>
+        <div class="field-sub"><span>Every N Years</span>
+          <input type="number" id="spend-reduction-every" value="5" min="1" max="20" step="1">
+        </div>
+      </div>
+    </div>
+    <div class="field-group">
+      <div class="field-row">
+        <div class="field-sub"><span>Reductions Start (P1 Age)</span>
+          <input type="number" id="spend-reduction-age" value="75" min="60" max="95" step="1">
+        </div>
+        <div class="field-sub" style="justify-content:flex-end;padding-top:18px">
+          <span style="font-size:0.7rem;color:var(--text-dim);line-height:1.4">0% = no reduction</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-header">Assumptions</div>
+    <div class="assumptions-grid">
+      <div class="field-sub"><span>Investment Growth %</span>
+        <div class="range-row">
+          <input type="range" id="growth" min="0" max="10" step="0.5" value="5" oninput="document.getElementById('growthv').textContent=this.value+'%'">
+          <span class="range-val" id="growthv">5%</span>
+        </div>
+      </div>
+      <div class="field-sub"><span>Inflation %</span>
+        <div class="range-row">
+          <input type="range" id="inflation" min="0" max="8" step="0.5" value="2.5" oninput="document.getElementById('inflationv').textContent=this.value+'%'">
+          <span class="range-val" id="inflationv">2.5%</span>
+        </div>
+      </div>
+    </div>
+    <div class="assumptions-grid">
+      <div class="field-sub"><span>PCLS Strategy</span>
+        <select id="pcls-strategy">
+          <option value="max">Take Max 25%</option>
+          <option value="spread">Spread Over 5 Yrs</option>
+          <option value="none">No PCLS</option>
+        </select>
+      </div>
+      <div class="field-sub"><span>Drawdown Order</span>
+        <select id="drawdown-order">
+          <option value="pension-first">Pension First</option>
+          <option value="isa-first">ISA First</option>
+          <option value="tax-optimal">Tax-Optimal</option>
+        </select>
+      </div>
+      <div class="field-sub"><span>Tax Allowance Uprating</span>
+        <select id="allowance-uprating">
+          <option value="frozen">Frozen (current policy)</option>
+          <option value="cpi" selected>Rises with Inflation</option>
+          <option value="cpi_half">Rises at ½ Inflation</option>
+        </select>
+      </div>
+      <div class="field-sub"><span>Bands Frozen Until Year</span>
+        <input type="number" id="freeze-until" value="2030" min="2024" max="2060">
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ====== MAIN PANEL ====== -->
+  <main class="main" id="main-panel">
+    <div class="placeholder" id="placeholder">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+        <rect x="4" y="36" width="8" height="24" rx="2" fill="currentColor"/>
+        <rect x="16" y="24" width="8" height="36" rx="2" fill="currentColor"/>
+        <rect x="28" y="14" width="8" height="46" rx="2" fill="currentColor"/>
+        <rect x="40" y="20" width="8" height="40" rx="2" fill="currentColor"/>
+        <rect x="52" y="28" width="8" height="32" rx="2" fill="currentColor"/>
+        <line x1="0" y1="62" x2="64" y2="62" stroke="currentColor" stroke-width="2"/>
+      </svg>
+      <p>Configure your details and click <strong>Run Projection</strong></p>
+    </div>
+    <div id="results" style="display:none"></div>
+  </main>
+</div>
+
+<script>
+// =============================================
+// UK TAX CONSTANTS (2024/25)
+// =============================================
+const TAX = {
+  personalAllowance: 12570,
+  basicRateLimit: 50270,
+  higherRateLimit: 125140,
+  basicRate: 0.20,
+  higherRate: 0.40,
+  additionalRate: 0.45,
+  // Scotland not modelled (England/Wales)
+  NIthreshold: 12570,
+  isaAllowance: 20000,
+  // State Pension full new (2024/25 rates)
+  statePensionTriplelock: 0.025, // assume CPI+1.5% average ~ 2.5% for simplicity
+};
+
+// t = thresholds object {pa, basicLimit, higherLimit} — uprated per year in engine
+function calcIncomeTax(taxableIncome, t) {
+  if (taxableIncome <= 0) return 0;
+  t = t || TAX; // fallback to base constants if called without thresholds
+  const pa = Math.max(0, t.personalAllowance - Math.max(0, (taxableIncome - t.paWithdrawalStart) / 2));
+  const abovePa = Math.max(0, taxableIncome - pa);
+  const basic = Math.min(abovePa, t.basicRateLimit - t.personalAllowance);
+  const higher = Math.min(Math.max(0, abovePa - (t.basicRateLimit - t.personalAllowance)), t.higherRateLimit - t.basicRateLimit);
+  const additional = Math.max(0, abovePa - (t.higherRateLimit - t.personalAllowance));
+  return Math.max(0, basic * TAX.basicRate + higher * TAX.higherRate + additional * TAX.additionalRate);
+}
+
+// Employee NI Class 1: thresholds also uprated
+function calcNI(salary, t) {
+  t = t || TAX;
+  if (salary <= t.NIthreshold) return 0;
+  const lower = Math.min(salary, t.basicRateLimit) - t.NIthreshold;
+  const upper = Math.max(0, salary - t.basicRateLimit);
+  return lower * 0.08 + upper * 0.02;
+}
+
+function netFromGross(gross, t) {
+  return gross - calcIncomeTax(gross, t);
+}
+
+// Build uprated thresholds for year y given inflation factor
+function upratedThresholds(inflFactor, uprating, freezeUntil, currentYear) {
+  // Bands are frozen until freezeUntil year; uprating only applies to years after that.
+  // We compute the inflation factor for just the post-freeze period.
+  const startYear = new Date().getFullYear();
+  const postFreezeYears = Math.max(0, (currentYear || startYear) - Math.max(freezeUntil || startYear, startYear));
+  const postFreezeInflFactor = Math.pow(inflFactor > 0 ? Math.pow(inflFactor, 1/Math.max(1, (currentYear||startYear)-startYear)) : 1, postFreezeYears);
+
+  let f = 1;
+  if (uprating === 'cpi')           f = postFreezeInflFactor;
+  else if (uprating === 'cpi_half') f = Math.pow(postFreezeInflFactor, 0.5);
+  // 'frozen' => f stays 1 regardless
+  return {
+    personalAllowance:  Math.round(TAX.personalAllowance  * f),
+    basicRateLimit:     Math.round(TAX.basicRateLimit      * f),
+    higherRateLimit:    Math.round(TAX.higherRateLimit     * f),
+    NIthreshold:        Math.round(TAX.NIthreshold         * f),
+    paWithdrawalStart:  Math.round(100000                  * f),
+  };
+}
+
+// =============================================
+// PERSON TABS
+// =============================================
+let activePerson = 0;
+function switchPerson(n) {
+  activePerson = n;
+  document.querySelectorAll('.person-tab').forEach((t,i) => t.classList.toggle('active', i===n));
+  document.querySelectorAll('.person-panel').forEach((p,i) => p.classList.toggle('active', i===n));
+}
+
+// =============================================
+// READ INPUTS
+// =============================================
+function getInputs() {
+  const g = id => parseFloat(document.getElementById(id).value) || 0;
+  const s = id => document.getElementById(id).value;
+
+  return {
+    persons: [
+      {
+        age: g('p0-age'), retAge: g('p0-retage'),
+        dc: g('p0-dc'), dcContrib: g('p0-dccontrib'), pclsAlreadyTaken: g('p0-pclstaken'), pclsToIsa: Math.min(g('p0-pclstoisa'), 20000),
+        db: g('p0-db'), dbAge: g('p0-dbage'), dbReduced: g('p0-dbreduced'), dbReducedAge: g('p0-dbreducedage'),
+        sp: g('p0-sp') * 52, spAge: g('p0-spage'),
+        isa: g('p0-isa'), isaContrib: g('p0-isacontrib'),
+        salary: g('p0-salary'), salaryGrowth: g('p0-salarygrowth') / 100,
+        sacrifice: g('p0-sacrifice'), employerPct: g('p0-employer') / 100, empContribPct: g('p0-empcontribpct') / 100, empContribVia: s('p0-empcontribvia'),
+      },
+      {
+        age: g('p1-age'), retAge: g('p1-retage'),
+        dc: g('p1-dc'), dcContrib: g('p1-dccontrib'), pclsAlreadyTaken: g('p1-pclstaken'), pclsToIsa: Math.min(g('p1-pclstoisa'), 20000),
+        db: g('p1-db'), dbAge: g('p1-dbage'), dbReduced: g('p1-dbreduced'), dbReducedAge: g('p1-dbreducedage'),
+        sp: g('p1-sp') * 52, spAge: g('p1-spage'),
+        isa: g('p1-isa'), isaContrib: g('p1-isacontrib'),
+        salary: g('p1-salary'), salaryGrowth: g('p1-salarygrowth') / 100,
+        sacrifice: g('p1-sacrifice'), employerPct: g('p1-employer') / 100, empContribPct: g('p1-empcontribpct') / 100, empContribVia: s('p1-empcontribvia'),
+      }
+    ],
+    spending: g('spending'),
+    endAge: g('endage'),
+    spendReductionPct: g('spend-reduction-pct') / 100,
+    spendReductionEvery: Math.max(1, g('spend-reduction-every')),
+    spendReductionAge: g('spend-reduction-age'),
+    growth: g('growth') / 100,
+    inflation: g('inflation') / 100,
+    pclsStrategy: s('pcls-strategy'),
+    drawdownOrder: s('drawdown-order'),
+    allowanceUprating: s('allowance-uprating'),
+    freezeUntil: g('freeze-until'),
+  };
+}
+
+// =============================================
+// CORE PROJECTION ENGINE
+// =============================================
+function runModel() {
+  const inp = getInputs();
+  const p = inp.persons;
+  const baseAge = Math.min(p[0].age, p[1].age);
+  const years = inp.endAge - baseAge;
+
+  // State: mutable balances
+  let dc = [p[0].dc, p[1].dc];
+  let isa = [p[0].isa, p[1].isa];
+  // If already retired at model start, mark PCLS as already partially/fully dealt with
+  // pclsTaken prevents the model from triggering PCLS at retAge again (retAge is in the past)
+  // pclsTaken[pi]=true only when the lifetime PCLS allowance is fully exhausted.
+  // Partial previous PCLS (pclsAlreadyTaken > 0 but < limit) must NOT block —
+  // the y=0 trigger will fire and take the remaining entitlement.
+  let pclsTaken = [
+    (p[0].pclsAlreadyTaken || 0) >= 268275,
+    (p[1].pclsAlreadyTaken || 0) >= 268275,
+  ];
+  // Spread strategy: track remaining spread years and cumulative PCLS taken per person
+  // (replaces the old fixed pre-calculated array)
+  let pclsSpreadYearsLeft = [0, 0]; // years of spread instalments remaining
+  let pclsCumulativeTaken = [
+    p[0].pclsAlreadyTaken || 0,
+    p[1].pclsAlreadyTaken || 0,
+  ];
+
+  const results = [];
+
+  for (let y = 0; y < years; y++) {
+    const yr = new Date().getFullYear() + y;
+    const ages = [p[0].age + y, p[1].age + y];
+    const inflFactor = Math.pow(1 + inp.inflation, y);
+    // Spending step-down: reduce by spendReductionPct every spendReductionEvery years
+    // starting once Person 1 reaches spendReductionAge
+    const p1Age = p[0].age + y;
+    let spendMultiplier = 1;
+    if (inp.spendReductionPct > 0 && p1Age >= inp.spendReductionAge) {
+      const yearsIntoReduction = p1Age - inp.spendReductionAge;
+      const stepsApplied = Math.floor(yearsIntoReduction / inp.spendReductionEvery) + 1;
+      spendMultiplier = Math.pow(1 - inp.spendReductionPct, stepsApplied);
+    }
+    const realSpend = inp.spending * inflFactor * spendMultiplier;
+    const thresh = upratedThresholds(inflFactor, inp.allowanceUprating, inp.freezeUntil, yr);
+
+    let yearData = {
+      year: yr, ages,
+      income: [0,0],        // taxable income per person (retirement)
+      dbIncome: [0,0],
+      spIncome: [0,0],
+      pensionDrawdown: [0,0],
+      pcls: [0,0],
+      isaWithdrawal: [0,0],
+      tax: [0,0],
+      netIncome: 0,
+      shortfall: 0,
+      dc: [...dc],
+      isa: [...isa],
+      totalAssets: 0,
+      employmentIncome: 0,
+      employmentNet: 0,
+      employmentTax: 0,
+      sacrifice: 0,
+    };
+
+    // --- DB and State Pension (taxable) ---
+    for (let pi = 0; pi < 2; pi++) {
+      const isRetired = ages[pi] >= p[pi].retAge;
+      if (!isRetired) {
+        // Still working: grow salary, compute NI, add pension contributions
+        const salaryYrs = ages[pi] - p[pi].age;
+        const grossSalary = p[pi].salary * Math.pow(1 + p[pi].salaryGrowth, salaryYrs);
+        const additionalSacrifice = Math.min(p[pi].sacrifice, grossSalary);
+        const empContrib = grossSalary * p[pi].empContribPct;
+        const employer = grossSalary * p[pi].employerPct;
+        // If employee contrib is via sacrifice, it also reduces taxable pay and NI
+        const empContribSacrifice = p[pi].empContribVia === 'sacrifice' ? empContrib : 0;
+        const sacrifice = Math.min(additionalSacrifice + empContribSacrifice, grossSalary);
+        const taxableSalary = grossSalary - sacrifice;
+        const salaryTax = calcIncomeTax(taxableSalary, thresh);
+        const salaryNI = calcNI(taxableSalary, thresh);
+        // Post-tax employee contrib reduces take-home; sacrifice already removed from taxable
+        const postTaxEmpContrib = p[pi].empContribVia === 'sacrifice' ? 0 : empContrib;
+        const salaryNet = taxableSalary - salaryTax - salaryNI - postTaxEmpContrib;
+        yearData.employmentIncome = (yearData.employmentIncome || 0) + grossSalary;
+        yearData.employmentGross = (yearData.employmentGross || 0) + taxableSalary; // post-sacrifice gross for chart
+        yearData.employmentNet = (yearData.employmentNet || 0) + salaryNet;
+        yearData.employmentTax = (yearData.employmentTax || 0) + salaryTax + salaryNI;
+        yearData.sacrifice = (yearData.sacrifice || 0) + additionalSacrifice;
+        yearData.empContrib = (yearData.empContrib || 0) + empContrib;
+        yearData.emplrContrib = (yearData.emplrContrib || 0) + employer;
+        // Pension pot: growth + sacrifice + employee contrib + employer contrib + any explicit contrib
+        dc[pi] = dc[pi] * (1 + inp.growth) + sacrifice + empContrib + employer + p[pi].dcContrib;
+        isa[pi] = isa[pi] * (1 + inp.growth) + p[pi].isaContrib;
+        continue;
+      }
+
+      // DB
+      if (ages[pi] >= p[pi].dbAge && p[pi].db > 0) {
+        const useReduced = p[pi].dbReduced > 0 && ages[pi] >= p[pi].dbReducedAge;
+        const dbBase = useReduced ? p[pi].dbReduced : p[pi].db;
+        const dbAmt = dbBase * inflFactor;
+        yearData.dbIncome[pi] = dbAmt;
+        yearData.income[pi] += dbAmt;
+      }
+      // State Pension
+      if (ages[pi] >= p[pi].spAge && p[pi].sp > 0) {
+        const spAmt = p[pi].sp * inflFactor;
+        yearData.spIncome[pi] = spAmt;
+        yearData.income[pi] += spAmt;
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // PCLS: trigger at retirement year, or in year 0 if already retired
+    // ---------------------------------------------------------------
+    for (let pi = 0; pi < 2; pi++) {
+      if (dc[pi] <= 0 || inp.pclsStrategy === 'none') continue;
+
+      const alreadyRetired = p[pi].age >= p[pi].retAge;
+      const retirementYear = !alreadyRetired && ages[pi] === p[pi].retAge;
+      const alreadyRetiredYear0 = alreadyRetired && y === 0;
+      // Start a new PCLS sequence at retirement (or year 0 if already retired)
+      if (!pclsTaken[pi] && (retirementYear || alreadyRetiredYear0)) {
+        if (inp.pclsStrategy === 'max') {
+          const amt = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
+          if (amt > 0) {
+            yearData.pcls[pi] = amt;
+            dc[pi] -= amt;
+            pclsCumulativeTaken[pi] += amt;
+          }
+          // Recycle elected amount into ISA (capped at £20k annual allowance)
+          if (amt > 0 && p[pi].pclsToIsa > 0) {
+            const toIsa = Math.min(amt, p[pi].pclsToIsa, 20000);
+            isa[pi] += toIsa;
+            yearData.pclsToIsa = (yearData.pclsToIsa || 0) + toIsa;
+          }
+          pclsTaken[pi] = true;
+        } else if (inp.pclsStrategy === 'spread') {
+          pclsSpreadYearsLeft[pi] = 5;
+          pclsTaken[pi] = true; // prevent re-triggering
+        }
+      }
+
+      // Spread instalment: evaluate AFTER trigger so first instalment fires in retirement year
+      const isSpreadYear = pclsSpreadYearsLeft[pi] > 0;
+      if (isSpreadYear) {
+        const remainingLifetime = 268275 - pclsCumulativeTaken[pi];
+        const yearsLeft = pclsSpreadYearsLeft[pi];
+        // Cap each instalment so the allowance spreads evenly across remaining years,
+        // never exhausting the lifetime limit in a single payment
+        const maxInstalment = remainingLifetime / yearsLeft;
+        const instalment = Math.max(0, Math.min(dc[pi] * 0.25, maxInstalment));
+        if (instalment > 0) {
+          yearData.pcls[pi] += instalment;
+          dc[pi] -= instalment;
+          pclsCumulativeTaken[pi] += instalment;
+        }
+        // Recycle elected amount into ISA (capped at £20k annual allowance)
+        if (instalment > 0 && p[pi].pclsToIsa > 0) {
+          const toIsa = Math.min(instalment, p[pi].pclsToIsa, 20000);
+          isa[pi] += toIsa;
+          yearData.pclsToIsa = (yearData.pclsToIsa || 0) + toIsa;
+        }
+        pclsSpreadYearsLeft[pi]--;
+      }
+    }
+    const pclsTotal = yearData.pcls[0] + yearData.pcls[1];
+
+    // ---------------------------------------------------------------
+    // How much net income do we still need from drawdown?
+    // Start from guaranteed tax-free sources (PCLS + employment net).
+    // Then work out how much net is already covered by DB+SP income,
+    // and how much gross drawdown is needed to cover the remainder.
+    // ---------------------------------------------------------------
+
+    // Tax-free income already secured this year (exclude PCLS - it's a capital event not income)
+    const taxFreeAlready = yearData.employmentNet;
+
+    // For each retired person: what is their net income from DB+SP alone?
+    // We need total combined net DB+SP to know the remaining gap.
+    // Because DB+SP are taxable, we must solve jointly per person.
+    let dbSpNet = 0;
+    for (let pi = 0; pi < 2; pi++) {
+      if (ages[pi] < p[pi].retAge) continue;
+      dbSpNet += yearData.income[pi] - calcIncomeTax(yearData.income[pi], thresh);
+    }
+
+    // Remaining net needed from drawdown (pension gross-up or ISA)
+    const netNeededFromDrawdown = Math.max(0, realSpend - taxFreeAlready - dbSpNet);
+
+    // ---------------------------------------------------------------
+    // DRAWDOWN: fill netNeededFromDrawdown using chosen strategy
+    // We work at the combined couple level, splitting draw across pots
+    // proportionally by pot size, then solving gross-for-net per person.
+    // ---------------------------------------------------------------
+    const order = inp.drawdownOrder;
+    let remainingGap = netNeededFromDrawdown; // net £ still to source
+
+    // Pot-size weights for splitting drawdown between persons
+    const totalDC = dc[0] + dc[1];
+    const totalISA = isa[0] + isa[1];
+    const dcShare = [
+      totalDC > 0 ? dc[0] / totalDC : 0.5,
+      totalDC > 0 ? dc[1] / totalDC : 0.5,
+    ];
+    const isaShare = [
+      totalISA > 0 ? isa[0] / totalISA : 0.5,
+      totalISA > 0 ? isa[1] / totalISA : 0.5,
+    ];
+
+    // Helper: draw net amount from ISA for person pi, returns actual net drawn
+    const drawISA = (pi, netWanted) => {
+      if (ages[pi] < p[pi].retAge) return 0;
+      const amt = Math.min(isa[pi], netWanted);
+      yearData.isaWithdrawal[pi] += amt;
+      isa[pi] -= amt;
+      return amt;
+    };
+
+    // Helper: draw gross pension for person pi to yield netWanted net, returns net actually drawn
+    const drawPension = (pi, netWanted) => {
+      if (ages[pi] < p[pi].retAge || dc[pi] <= 0 || netWanted <= 0) return 0;
+      const gross = solveGrossForNet(netWanted, yearData.income[pi], thresh);
+      const draw = Math.min(dc[pi], gross);
+      yearData.pensionDrawdown[pi] += draw;
+      yearData.income[pi] += draw;
+      dc[pi] -= draw;
+      // Return actual net delivered
+      const taxBefore = calcIncomeTax(yearData.income[pi] - draw, thresh);
+      const taxAfter  = calcIncomeTax(yearData.income[pi], thresh);
+      return draw - (taxAfter - taxBefore);
+    };
+
+    if (order === 'isa-first') {
+      // ISA first, then pension
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        const want = remainingGap * isaShare[pi];
+        remainingGap -= drawISA(pi, want);
+      }
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        const want = remainingGap * dcShare[pi];
+        remainingGap -= drawPension(pi, want);
+      }
+      // mop up any residual with the other person's pots
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        remainingGap -= drawISA(pi, remainingGap);
+        remainingGap -= drawPension(pi, remainingGap);
+      }
+
+    } else if (order === 'pension-first') {
+      // Pension first, then ISA
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        const want = remainingGap * dcShare[pi];
+        remainingGap -= drawPension(pi, want);
+      }
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        const want = remainingGap * isaShare[pi];
+        remainingGap -= drawISA(pi, want);
+      }
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        remainingGap -= drawISA(pi, remainingGap);
+        remainingGap -= drawPension(pi, remainingGap);
+      }
+
+    } else {
+      // Tax-optimal: per person, fill pension up to personal allowance (tax-free),
+      // then ISA, then taxable pension
+      for (let pi = 0; pi < 2; pi++) {
+        if (ages[pi] < p[pi].retAge || remainingGap <= 0) continue;
+
+        // 1. Pension up to personal allowance (effectively 0% tax)
+        const spaceInPA = Math.max(0, thresh.personalAllowance - yearData.income[pi]);
+        const paWant = Math.min(spaceInPA, remainingGap * dcShare[pi], dc[pi]);
+        if (paWant > 0) {
+          yearData.pensionDrawdown[pi] += paWant;
+          yearData.income[pi] += paWant;
+          dc[pi] -= paWant;
+          remainingGap -= paWant; // within PA, gross ≈ net (tax is 0)
+        }
+
+        // 2. ISA for remainder of this person's share
+        const isaWant = remainingGap * isaShare[pi];
+        remainingGap -= drawISA(pi, isaWant);
+      }
+
+      // 3. Any remaining gap: taxable pension drawdown
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        const want = remainingGap * dcShare[pi];
+        remainingGap -= drawPension(pi, want);
+      }
+      // Final mop-up
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        remainingGap -= drawISA(pi, remainingGap);
+        remainingGap -= drawPension(pi, remainingGap);
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // FINAL RECALC: authoritative net income for this year
+    // ---------------------------------------------------------------
+    yearData.tax = [0, 0];
+    for (let pi = 0; pi < 2; pi++) {
+      yearData.tax[pi] = calcIncomeTax(yearData.income[pi], thresh);
+    }
+    const totalTax = yearData.tax[0] + yearData.tax[1];
+    const grossTaxable = yearData.income[0] + yearData.income[1];
+    const isaTotal = yearData.isaWithdrawal[0] + yearData.isaWithdrawal[1];
+    // PCLS excluded from netIncome - it is a capital event shown separately in the chart
+    yearData.netIncome = (grossTaxable - totalTax) + isaTotal + yearData.employmentNet;
+    yearData.totalTaxAll = totalTax + yearData.employmentTax;
+    yearData.shortfall = Math.max(0, realSpend - yearData.netIncome);
+
+    // Grow remaining balances
+    for (let pi = 0; pi < 2; pi++) {
+      if (ages[pi] >= p[pi].retAge) {
+        dc[pi] = Math.max(0, dc[pi]) * (1 + inp.growth);
+        isa[pi] = Math.max(0, isa[pi]) * (1 + inp.growth);
+      }
+    }
+
+    yearData.dc = [...dc];
+    yearData.isa = [...isa];
+    yearData.totalAssets = dc[0] + dc[1] + isa[0] + isa[1];
+    yearData.totalTax = totalTax;
+    yearData.realSpend = realSpend;
+    results.push(yearData);
+  }
+
+  renderResults(results, inp);
+}
+
+function solveGrossForNet(targetNet, existingTaxable, thresh) {
+  // Binary search for gross pension drawdown that yields targetNet after tax
+  let lo = 0, hi = targetNet * 2;
+  for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    const totalGross = existingTaxable + mid;
+    const netFromMid = mid - (calcIncomeTax(totalGross, thresh) - calcIncomeTax(existingTaxable, thresh));
+    if (netFromMid < targetNet) lo = mid;
+    else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
+// =============================================
+// RENDER
+// =============================================
+let chartInstances = {};
+
+function destroyChart(id) {
+  if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+}
+
+function fmt(n) {
+  if (Math.abs(n) >= 1e6) return '£' + (n/1e6).toFixed(2) + 'm';
+  if (Math.abs(n) >= 1e3) return '£' + Math.round(n/1000) + 'k';
+  return '£' + Math.round(n).toLocaleString();
+}
+function fmtFull(n) {
+  return '£' + Math.round(n).toLocaleString();
+}
+
+function renderResults(results, inp) {
+  document.getElementById('placeholder').style.display = 'none';
+  const panel = document.getElementById('results');
+  panel.style.display = 'block';
+
+  const years = results.map(r => r.year);
+  const totalAssets = results.map(r => r.totalAssets);
+  const netIncome = results.map(r => r.netIncome);
+  const totalTax = results.map(r => r.totalTaxAll || r.totalTax);
+  const spending = results.map(r => r.realSpend);
+  const shortfall = results.map(r => r.shortfall);
+  const dc0 = results.map(r => r.dc[0]);
+  const dc1 = results.map(r => r.dc[1]);
+  const isa0 = results.map(r => r.isa[0]);
+  const isa1 = results.map(r => r.isa[1]);
+  const pensionDraw = results.map(r => r.pensionDrawdown[0] + r.pensionDrawdown[1]);
+  const isaWithdraw = results.map(r => r.isaWithdrawal[0] + r.isaWithdrawal[1]);
+  const pclsAmts = results.map(r => r.pcls[0] + r.pcls[1]);
+  const dbIncome = results.map(r => r.dbIncome[0] + r.dbIncome[1]);
+  const spIncome = results.map(r => r.spIncome[0] + r.spIncome[1]);
+  const employmentGrossArr = results.map(r => r.employmentGross || 0);
+  const agesP1 = results.map(r => r.ages[0]);
+  const agesP2 = results.map(r => r.ages[1]);
+
+  // Summary stats
+  const lastResult = results[results.length - 1];
+  const peakTax = Math.max(...totalTax);
+  const avgTax = totalTax.reduce((a,b)=>a+b,0)/totalTax.length;
+  const fundDepletionIdx = totalAssets.findIndex(a => a <= 0);
+  const fundDepletionYear = fundDepletionIdx === -1 ? 'Never' : years[fundDepletionIdx];
+  const totalTaxPaid = totalTax.reduce((a,b)=>a+b,0);
+  const shortfallYears = shortfall.filter(s=>s>100).length;
+  const totalPCLSAllYears = pclsAmts.reduce((a,b)=>a+b,0);
+
+  panel.innerHTML = `
+    <!-- SUMMARY CARDS -->
+    <div class="summary-cards">
+      <div class="card accent">
+        <div class="card-label">Total Assets Now</div>
+        <div class="card-value">${fmt(inp.persons[0].dc + inp.persons[1].dc + inp.persons[0].isa + inp.persons[1].isa)}</div>
+        <div class="card-sub">Pension + ISA combined</div>
+      </div>
+      <div class="card ${fundDepletionIdx === -1 ? 'good' : 'warn'}">
+        <div class="card-label">Fund Depletion</div>
+        <div class="card-value">${fundDepletionYear}</div>
+        <div class="card-sub">${fundDepletionIdx === -1 ? 'Survives to ' + inp.endAge : 'Age concern — review drawdown'}</div>
+      </div>
+      <div class="card p2">
+        <div class="card-label">Total Tax (lifetime)</div>
+        <div class="card-value">${fmt(totalTaxPaid)}</div>
+        <div class="card-sub">Avg ${fmt(avgTax)}/yr</div>
+      </div>
+      <div class="card ${shortfallYears > 0 ? 'warn' : 'good'}">
+        <div class="card-label">Shortfall Years</div>
+        <div class="card-value">${shortfallYears}</div>
+        <div class="card-sub">${shortfallYears === 0 ? 'Spending target fully met' : 'Years income < spending'}</div>
+      </div>
+      <div class="card accent">
+        <div class="card-label">Total PCLS (lifetime)</div>
+        <div class="card-value">${fmt(totalPCLSAllYears)}</div>
+        <div class="card-sub">Tax-free lump sum across all years</div>
+      </div>
+    </div>
+
+    <!-- CASHFLOW CHART + TAX PIE -->
+    <div class="chart-row">
+      <div class="chart-box">
+        <div class="chart-title">Annual Cashflow <span>Net income vs target spending</span></div>
+        <canvas id="cashflow-chart" height="200"></canvas>
+        <div class="legend" style="margin-top:12px">
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(90,160,130,0.75)"></div>Employment (gross)</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>Pension Drawdown</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>ISA Withdrawal</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>DB Pension</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--sp)"></div>State Pension</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>PCLS</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,80,0.7)"></div>Spending</div>
+        </div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">Tax Efficiency <span>First year breakdown</span></div>
+        <canvas id="tax-donut" height="200"></canvas>
+      </div>
+    </div>
+
+    <!-- ASSET BALANCE CHART -->
+    <div class="chart-full">
+      <div class="chart-title">Asset Balances Over Time <span>Pension pots and ISAs</span></div>
+      <canvas id="assets-chart" height="150"></canvas>
+      <div class="legend" style="margin-top:12px">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>P1 Pension</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>P2 Pension</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>P1 ISA</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>P2 ISA</div>
+      </div>
+    </div>
+
+    <!-- TAX OVER TIME -->
+    <div class="chart-full">
+      <div class="chart-title">Annual Tax Paid <span>Income tax both persons combined</span></div>
+      <canvas id="tax-chart" height="100"></canvas>
+    </div>
+
+    <!-- OPTIMISATION TIPS -->
+    <div class="section-header" style="margin-bottom:14px; padding:12px 0; font-size:0.8rem; letter-spacing:0.1em; color:var(--accent); text-transform:uppercase; border-bottom:1px solid var(--border)">
+      Tax Efficiency Insights
+    </div>
+    <div class="tips" id="tips-container"></div>
+
+    <!-- YEAR-BY-YEAR TABLE -->
+    <div class="chart-title" style="margin-bottom:12px; margin-top:4px">
+      Year-by-Year Detail
+      <span style="cursor:pointer; color:var(--accent2)" onclick="toggleTable()">▼ Show / Hide</span>
+    </div>
+    <div class="tax-table-wrap" id="year-table" style="display:none">
+      <table>
+        <thead>
+          <tr>
+            <th>Year</th>
+            <th>Ages</th>
+            <th>Salary (gross)</th>
+            <th>Sacrifice</th>
+            <th>Ee Contrib</th>
+            <th>Er Contrib</th>
+            <th>Pension Draw</th>
+            <th>ISA Draw</th>
+            <th>DB+SP</th>
+            <th>PCLS</th>
+            <th>Tax+NI</th>
+            <th>Net Income</th>
+            <th>Spending</th>
+            <th>Shortfall</th>
+            <th>Total Assets</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  `;
+
+  // ---- CASHFLOW STACKED BAR ----
+  destroyChart('cashflow');
+  chartInstances['cashflow'] = new Chart(document.getElementById('cashflow-chart'), {
+    type: 'bar',
+    data: {
+      labels: years,
+      datasets: [
+        { label: 'Employment (gross)', data: employmentGrossArr, backgroundColor: 'rgba(90,160,130,0.75)', stack: 'income' },
+        { label: 'Pension Drawdown', data: pensionDraw, backgroundColor: 'rgba(200,169,110,0.75)', stack: 'income' },
+        { label: 'ISA Withdrawal', data: isaWithdraw, backgroundColor: 'rgba(143,176,122,0.75)', stack: 'income' },
+        { label: 'DB Pension', data: dbIncome, backgroundColor: 'rgba(176,122,217,0.75)', stack: 'income' },
+        { label: 'State Pension', data: spIncome, backgroundColor: 'rgba(201,126,126,0.75)', stack: 'income' },
+        { label: 'PCLS', data: pclsAmts, backgroundColor: 'rgba(126,184,201,0.75)', stack: 'income' },
+        { label: 'Spending Target', data: spending, type: 'line', borderColor: 'rgba(224,120,80,0.9)', borderWidth: 2, pointRadius: 0, borderDash: [4,3], fill: false, stack: undefined },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: function(items) {
+              const i = items[0].dataIndex;
+              return `${years[i]}  ·  P1 age ${agesP1[i]}  ·  P2 age ${agesP2[i]}`;
+            },
+            label: function(item) {
+              if (item.parsed.y === 0) return null;
+              return ` ${item.dataset.label}: ${fmt(item.parsed.y)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font: {size:11} }, grid: { color: '#1e2230' } },
+        y: { ticks: { color: '#7a8099', callback: v => fmt(v), font: {size:11} }, grid: { color: '#1e2230' } }
+      }
+    }
+  });
+
+  // ---- ASSET BALANCE LINE ----
+  destroyChart('assets');
+  chartInstances['assets'] = new Chart(document.getElementById('assets-chart'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        { label: 'P1 Pension', data: dc0, borderColor: 'rgba(200,169,110,0.9)', backgroundColor: 'rgba(200,169,110,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+        { label: 'P2 Pension', data: dc1, borderColor: 'rgba(126,184,201,0.9)', backgroundColor: 'rgba(126,184,201,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+        { label: 'P1 ISA', data: isa0, borderColor: 'rgba(143,176,122,0.9)', backgroundColor: 'rgba(143,176,122,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+        { label: 'P2 ISA', data: isa1, borderColor: 'rgba(176,122,217,0.9)', backgroundColor: 'rgba(176,122,217,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: items => `${years[items[0].dataIndex]}  ·  P1 age ${agesP1[items[0].dataIndex]}  ·  P2 age ${agesP2[items[0].dataIndex]}`,
+            label: item => item.parsed.y > 0 ? ` ${item.dataset.label}: ${fmt(item.parsed.y)}` : null,
+            footer: items => {
+              const i = items[0].dataIndex;
+              const total = (dc0[i]||0) + (dc1[i]||0) + (isa0[i]||0) + (isa1[i]||0);
+              return `Total: ${fmt(total)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font:{size:11} }, grid: { color: '#1e2230' } },
+        y: { ticks: { color: '#7a8099', callback: v => fmt(v), font:{size:11} }, grid: { color: '#1e2230' } }
+      }
+    }
+  });
+
+  // ---- TAX LINE ----
+  destroyChart('tax');
+  chartInstances['tax'] = new Chart(document.getElementById('tax-chart'), {
+    type: 'line',
+    data: {
+      labels: years,
+      datasets: [
+        { label: 'Total Tax', data: totalTax, borderColor: 'rgba(224,120,80,0.9)', backgroundColor: 'rgba(224,120,80,0.1)', borderWidth: 2, pointRadius: 0, fill: true },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#7a8099', maxTicksLimit: 10, font:{size:11} }, grid: { color: '#1e2230' } },
+        y: { ticks: { color: '#7a8099', callback: v => fmt(v), font:{size:11} }, grid: { color: '#1e2230' } }
+      }
+    }
+  });
+
+  // ---- TAX DONUT ----
+  const yr1 = results[0];
+  const yr1pensionGross = yr1.income[0] + yr1.income[1];
+  const yr1isaAmt = yr1.isaWithdrawal[0] + yr1.isaWithdrawal[1];
+  const yr1pcls = yr1.pcls[0] + yr1.pcls[1];
+  const yr1tax = yr1.totalTax;
+  const yr1net = yr1.netIncome;
+  destroyChart('tax-donut');
+  chartInstances['tax-donut'] = new Chart(document.getElementById('tax-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Net Income', 'Tax Paid', 'ISA (tax-free)', 'PCLS (tax-free)'],
+      datasets: [{
+        data: [
+          Math.max(0, yr1net - yr1isaAmt - yr1pcls),
+          yr1tax,
+          yr1isaAmt,
+          yr1pcls
+        ],
+        backgroundColor: ['rgba(200,169,110,0.8)', 'rgba(224,120,80,0.8)', 'rgba(143,176,122,0.8)', 'rgba(126,184,201,0.8)'],
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      cutout: '65%',
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color: '#7a8099', font: {size:11}, boxWidth: 12 }
+        }
+      }
+    }
+  });
+
+  // ---- TIPS ----
+  generateTips(results, inp);
+
+  // ---- TABLE ----
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = results.map(r => `
+    <tr class="${r.shortfall > 100 ? 'highlight' : ''}">
+      <td>${r.year}</td>
+      <td>${r.ages[0]}/${r.ages[1]}</td>
+      <td>${r.employmentIncome > 0 ? fmtFull(r.employmentIncome) : '—'}</td>
+      <td>${r.sacrifice > 0 ? fmtFull(r.sacrifice) : '—'}</td>
+      <td>${r.empContrib > 0 ? fmtFull(r.empContrib) : '—'}</td>
+      <td>${r.emplrContrib > 0 ? fmtFull(r.emplrContrib) : '—'}</td>
+      <td>${fmtFull(r.pensionDrawdown[0]+r.pensionDrawdown[1])}</td>
+      <td>${fmtFull(r.isaWithdrawal[0]+r.isaWithdrawal[1])}</td>
+      <td>${fmtFull(r.dbIncome[0]+r.dbIncome[1]+r.spIncome[0]+r.spIncome[1])}</td>
+      <td>${fmtFull(r.pcls[0]+r.pcls[1])}</td>
+      <td>${fmtFull(r.totalTaxAll||r.totalTax)}</td>
+      <td>${fmtFull(r.netIncome)}</td>
+      <td>${fmtFull(r.realSpend)}</td>
+      <td>${r.shortfall > 100 ? '<span style="color:var(--accent4)">'+fmtFull(r.shortfall)+'</span>' : '—'}</td>
+      <td>${fmtFull(r.totalAssets)}</td>
+    </tr>
+  `).join('');
+}
+
+function generateTips(results, inp) {
+  const tips = [];
+  const p = inp.persons;
+
+  // ISA allowance tip
+  const totalISA = p[0].isa + p[1].isa;
+  const totalDC = p[0].dc + p[1].dc;
+  const isaRatio = totalISA / (totalISA + totalDC);
+  if (isaRatio < 0.15) {
+    tips.push({ cls: 'info', title: 'ISA Allowance Under-utilised', body: `ISAs represent only ${Math.round(isaRatio*100)}% of your combined pot. Consider maximising the £20,000/person annual ISA allowance before retirement to build a tax-free income buffer.` });
+  }
+
+  // Pension PA headroom
+  const yr1 = results[0];
+  const p0taxable = yr1.income[0];
+  const p1taxable = yr1.income[1];
+  const startYear = new Date().getFullYear();
+  const yr1thresh = upratedThresholds(Math.pow(1 + inp.inflation, 0), inp.allowanceUprating, inp.freezeUntil, startYear);
+  const pa0room = Math.max(0, yr1thresh.personalAllowance - p0taxable);
+  const pa1room = Math.max(0, yr1thresh.personalAllowance - p1taxable);
+  if (pa0room > 2000 || pa1room > 2000) {
+    tips.push({ cls: 'good', title: 'Personal Allowance Headroom', body: `Person 1 has ${fmt(pa0room)} of unused personal allowance; Person 2 has ${fmt(pa1room)}. Drawing pension income up to £12,570 each is completely tax-free — consider topping up drawdown to fill these bands.` });
+  }
+
+  // PCLS tip
+  if (inp.pclsStrategy === 'none' && (p[0].dc > 100000 || p[1].dc > 100000)) {
+    tips.push({ cls: '', title: 'PCLS Not Being Taken', body: `You have substantial pension pots but have disabled PCLS. The 25% tax-free lump sum (up to £268,275) could provide a significant tax-free income boost — especially useful for bridging income before State Pension starts.` });
+  }
+
+  // Higher rate risk
+  const maxIncome = Math.max(...results.map(r => r.income[0] + r.income[1]));
+  const peakThresh = upratedThresholds(Math.pow(1 + inp.inflation, results.length - 1), inp.allowanceUprating, inp.freezeUntil, startYear + results.length - 1);
+  if (maxIncome > peakThresh.basicRateLimit) {
+    tips.push({ cls: 'warn', title: 'Higher-Rate Tax Exposure', body: `Combined taxable income peaks at ${fmt(maxIncome)}, exceeding the £50,270 basic rate threshold. Spreading drawdown between spouses and drawing on ISA instead of pension in high-income years can reduce 40% tax exposure.` });
+  }
+
+  // Income splitting
+  const p0max = Math.max(...results.map(r => r.income[0]));
+  const p1max = Math.max(...results.map(r => r.income[1]));
+  if (Math.abs(p0max - p1max) > 15000) {
+    tips.push({ cls: 'info', title: 'Income Splitting Opportunity', body: `There is a significant income disparity between Person 1 (${fmt(p0max)}) and Person 2 (${fmt(p1max)}) at peak years. If the lower earner has unused personal allowance, consider transferring assets or taking pension income via the lower earner's pot.` });
+  }
+
+  // State pension bridge
+  const ages = [p[0].age, p[1].age];
+  const spAges = [p[0].spAge, p[1].spAge];
+  const yearsToSP = Math.min(spAges[0]-ages[0], spAges[1]-ages[1]);
+  if (yearsToSP > 3) {
+    tips.push({ cls: '', title: 'State Pension Bridge', body: `Both State Pensions are ${yearsToSP}+ years away. In the pre-SP period, pension drawdown and ISA can efficiently fill income needs. Once State Pensions begin (totalling ${fmt((p[0].sp + p[1].sp))} combined), reduce drawdown to avoid tax.` });
+  }
+
+  // Drawdown ordering
+  if (inp.drawdownOrder !== 'tax-optimal') {
+    tips.push({ cls: 'good', title: 'Try Tax-Optimal Drawdown', body: 'Switch to "Tax-Optimal" drawdown ordering to have the model automatically fill pension income up to the Personal Allowance first (tax-free), then use ISA funds — typically saving thousands in income tax annually.' });
+  }
+
+  const container = document.getElementById('tips-container');
+  container.innerHTML = tips.slice(0,6).map(t => `
+    <div class="tip-card ${t.cls}">
+      <div class="tip-title">${t.title}</div>
+      <div class="tip-body">${t.body}</div>
+    </div>
+  `).join('');
+}
+
+function toggleTable() {
+  const t = document.getElementById('year-table');
+  t.style.display = t.style.display === 'none' ? 'block' : 'none';
+}
+
+// =============================================
+// PERSIST INPUTS TO localStorage
+// =============================================
+const STORAGE_KEY = 'rcm_inputs_v1';
+
+const FIELD_IDS = [
+  'p0-age','p0-retage','p0-dc','p0-pclstaken','p0-pclstoisa','p0-dccontrib','p0-db','p0-dbage','p0-dbreduced','p0-dbreducedage','p0-sp','p0-spage','p0-isa','p0-isacontrib',
+  'p0-salary','p0-salarygrowth','p0-sacrifice','p0-empcontribpct','p0-empcontribvia','p0-employer',
+  'p1-age','p1-retage','p1-dc','p1-pclstaken','p1-pclstoisa','p1-dccontrib','p1-db','p1-dbage','p1-dbreduced','p1-dbreducedage','p1-sp','p1-spage','p1-isa','p1-isacontrib',
+  'p1-salary','p1-salarygrowth','p1-sacrifice','p1-empcontribpct','p1-empcontribvia','p1-employer',
+  'spending','endage','spend-reduction-pct','spend-reduction-every','spend-reduction-age',
+  'growth','inflation','pcls-strategy','drawdown-order','allowance-uprating','freeze-until'
+];
+
+function saveInputs() {
+  const state = {};
+  FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) state[id] = el.value;
+  });
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+function restoreInputs() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const state = JSON.parse(raw);
+    FIELD_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && state[id] !== undefined) {
+        el.value = state[id];
+        if (el.type === 'range') {
+          const label = document.getElementById(id + 'v');
+          if (label) label.textContent = state[id] + '%';
+        }
+      }
+    });
+    return true;
+  } catch(e) { return false; }
+}
+
+window.addEventListener('load', () => {
+  restoreInputs();
+  FIELD_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', saveInputs);
+      // Prevent scroll wheel from changing number input values
+      if (el.type === 'number') {
+        el.addEventListener('wheel', e => { e.preventDefault(); }, { passive: false });
+      }
+    }
+  });
+  setTimeout(runModel, 300);
+});
+</script>
+</body>
+</html>
