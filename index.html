@@ -1672,20 +1672,12 @@ window.addEventListener('load', () => {
     const el = document.getElementById(id);
     if (el) {
       el.addEventListener('input', saveInputs);
+      // Prevent scroll wheel from changing number input values
+      if (el.type === 'number') {
+        el.addEventListener('wheel', e => { e.preventDefault(); }, { passive: false });
     }
-  });
-
-  // Delegate scroll wheel prevention for number inputs
-  const sidebar = document.querySelector('.sidebar');
-  if (sidebar) {
-    sidebar.addEventListener('wheel', function(e) {
-      const active = document.activeElement;
-      if (active && active.type === 'number' && sidebar.contains(active)) {
-        e.preventDefault();
       }
-    }, { passive: false });
-  }
-
+  });
   setTimeout(runModel, 300);
 });
 </script>
