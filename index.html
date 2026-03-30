@@ -941,46 +941,48 @@ function runModel() {
     };
 
     for (let pi = 0; pi < 2; pi++) {
-      if (dc[pi] <= 0 || p[pi].pclsStrategy === 'none') continue;
-      const alreadyRetired = p[pi].age >= p[pi].retAge;
-      const retirementYear = !alreadyRetired && ages[pi] === p[pi].retAge;
-      const alreadyRetiredYear0 = alreadyRetired && y === 0;
-      if (!pclsTaken[pi] && (retirementYear || alreadyRetiredYear0)) {
-        if (p[pi].pclsStrategy === 'max') {
-          const amt = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
-          if (amt > 0) {
-            yearData.pcls[pi] = amt;
-            dc[pi] -= amt;
-            pclsCumulativeTaken[pi] += amt;
-            // 'Take Max' PCLS is spent outside the model — not recycled into ISA
+      // Trigger block: only when pot has funds and strategy not none
+      if (dc[pi] > 0 && p[pi].pclsStrategy !== 'none') {
+        const alreadyRetired = p[pi].age >= p[pi].retAge;
+        const retirementYear = !alreadyRetired && ages[pi] === p[pi].retAge;
+        const alreadyRetiredYear0 = alreadyRetired && y === 0;
+        if (!pclsTaken[pi] && (retirementYear || alreadyRetiredYear0)) {
+          if (p[pi].pclsStrategy === 'max') {
+            const amt = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
+            if (amt > 0) {
+              yearData.pcls[pi] = amt;
+              dc[pi] -= amt;
+              pclsCumulativeTaken[pi] += amt;
+              // 'Take Max' PCLS is spent outside the model — not recycled into ISA
+            }
+            pclsTaken[pi] = true;
+          } else if (p[pi].pclsStrategy === 'isa-paced') {
+            pclsIsaPacedEntitlement[pi] = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
+            pclsSpreadYearsLeft[pi] = -1;
+            pclsTaken[pi] = true;
           }
-          pclsTaken[pi] = true;
-        } else if (p[pi].pclsStrategy === 'isa-paced') {
-          // Lock in the 25% entitlement based on current pot size and remaining lifetime allowance
-          pclsIsaPacedEntitlement[pi] = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
-          pclsSpreadYearsLeft[pi] = -1;
-          pclsTaken[pi] = true;
         }
       }
-      // ISA-paced spread: take up to pclsAnnualRate each year until lifetime limit or pot exhausted
-      const isIsaPaced = pclsSpreadYearsLeft[pi] === -1;
-      if (isIsaPaced) {
+      // ISA-paced instalment: runs every year regardless of pot balance until entitlement exhausted
+      if (pclsSpreadYearsLeft[pi] === -1) {
         const remainingEntitlement = Math.max(0, pclsIsaPacedEntitlement[pi] - pclsIsaPacedTaken[pi]);
-        if (remainingEntitlement > 0 && dc[pi] > 0) {
+        if (remainingEntitlement <= 0) {
+          pclsSpreadYearsLeft[pi] = 0;
+        } else {
           const householdRemaining = Math.max(0, p[pi].pclsAnnualRate - pclsHouseholdTakenThisYear);
-          // Take the lesser of: annual rate, remaining entitlement, available in pot
-          const instalment = Math.max(0, Math.min(householdRemaining, remainingEntitlement, dc[pi]));
-          if (instalment > 0) {
-            yearData.pcls[pi] += instalment;
-            dc[pi] -= instalment;
-            pclsCumulativeTaken[pi] += instalment;
-            pclsIsaPacedTaken[pi] += instalment;
-            pclsHouseholdTakenThisYear += instalment;
-            routePclsToIsa(pi, instalment);
+          // Entitlement is a right even if pot is empty from drawdown
+          const actualInstalment = dc[pi] > 0
+            ? Math.max(0, Math.min(householdRemaining, remainingEntitlement, dc[pi]))
+            : Math.max(0, Math.min(householdRemaining, remainingEntitlement));
+          if (actualInstalment > 0) {
+            yearData.pcls[pi] += actualInstalment;
+            if (dc[pi] > 0) dc[pi] -= actualInstalment;
+            pclsCumulativeTaken[pi] += actualInstalment;
+            pclsIsaPacedTaken[pi] += actualInstalment;
+            pclsHouseholdTakenThisYear += actualInstalment;
+            routePclsToIsa(pi, actualInstalment);
           }
           if (pclsIsaPacedTaken[pi] >= pclsIsaPacedEntitlement[pi]) pclsSpreadYearsLeft[pi] = 0;
-        } else {
-          pclsSpreadYearsLeft[pi] = 0;
         }
       }
     }
