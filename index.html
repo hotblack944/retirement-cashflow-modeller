@@ -1037,18 +1037,7 @@ function runModel() {
     const dcShare = [totalDC > 0 ? totalPension[0]/totalDC : 0.5, totalDC > 0 ? totalPension[1]/totalDC : 0.5];
     const isaShare = [totalISA > 0 ? isa[0]/totalISA : 0.5, totalISA > 0 ? isa[1]/totalISA : 0.5];
 
-    // For pension-first and tax-optimal: pre-crystallise udc so drawPension can access it.
-    // We crystallise exactly what's needed for spending (no PCLS — that's already been taken).
-    // ISA-first doesn't pre-crystallise — it avoids pension where possible.
-    if (order !== 'isa-first') {
-      for (let pi = 0; pi < 2; pi++) {
-        if (udc[pi] <= 0 || ages[pi] < p[pi].retAge) continue;
-        // Crystallise enough to cover this person's share of net spending need from pension
-        const needed = netNeededFromDrawdown * dcShare[pi] * 1.5; // 1.5× buffer for tax gross-up
-        const toMove = Math.min(udc[pi], Math.max(0, needed - dc[pi]));
-        if (toMove > 0) { udc[pi] -= toMove; dc[pi] += toMove; }
-      }
-    }
+
 
     const drawISA = (pi, netWanted) => {
       if (ages[pi] < p[pi].retAge) return 0;
@@ -1058,28 +1047,101 @@ function runModel() {
       return amt;
     };
     const drawPension = (pi, netWanted) => {
-      if (ages[pi] < p[pi].retAge || dc[pi] <= 0 || netWanted <= 0) return 0;
-      // dc only contains crystallised funds — udc is separate and untouched by drawdown.
-      // No reservation needed: PCLS comes from udc, drawdown comes from dc.
-      const gross = solveGrossForNet(netWanted, yearData.income[pi], thresh);
-      const draw = Math.min(dc[pi], gross);
-      yearData.pensionDrawdown[pi] += draw;
-      yearData.income[pi] += draw;
-      dc[pi] -= draw;
-      const taxBefore = calcIncomeTax(yearData.income[pi] - draw, thresh);
-      const taxAfter  = calcIncomeTax(yearData.income[pi], thresh);
-      return draw - (taxAfter - taxBefore);
+      if (ages[pi] < p[pi].retAge || netWanted <= 0) return 0;
+      if (dc[pi] <= 0 && udc[pi] <= 0) return 0;
+
+      // UFPLS from uncrystallised funds: each withdrawal is 25% tax-free, 75% taxable.
+      // To deliver netWanted net: solve for the gross UFPLS amount where
+      //   net = gross * 0.25  (tax-free portion)
+      //       + gross * 0.75 - tax(gross * 0.75 + existing income)  (taxable portion)
+      // We use binary search on gross UFPLS, then fall back to crystallised dc.
+      let netDelivered = 0;
+
+      if (udc[pi] > 0) {
+        // Check how much tax-free allowance remains — UFPLS 25% counts toward the £268,275 limit
+        const lifetimeRemaining = Math.max(0, 268275 - pclsCumulativeTaken[pi]);
+
+        if (lifetimeRemaining <= 0) {
+          // Lifetime allowance exhausted — UFPLS would be 100% taxable, treat as crystallised dc
+          udc[pi] = Math.max(0, udc[pi]);
+          dc[pi] += udc[pi];
+          udc[pi] = 0;
+          // Fall through to dc drawdown below
+        } else {
+          // Binary search: find gross UFPLS that delivers netWanted net
+          // The tax-free portion is capped by lifetimeRemaining; beyond that it's taxable
+          let lo = 0, hi = netWanted * 3;
+          for (let i = 0; i < 30; i++) {
+            const mid = (lo + hi) / 2;
+            // Tax-free portion capped at remaining lifetime allowance
+            const taxFreePart = Math.min(mid * 0.25, lifetimeRemaining);
+            const taxablePart = mid - taxFreePart; // rest is taxable
+            const taxOnTaxable = calcIncomeTax(yearData.income[pi] + taxablePart, thresh)
+                               - calcIncomeTax(yearData.income[pi], thresh);
+            const netFromMid = taxFreePart + taxablePart - taxOnTaxable;
+            if (netFromMid < netWanted) lo = mid; else hi = mid;
+          }
+          const grossUFPLS = Math.min((lo + hi) / 2, udc[pi]);
+          if (grossUFPLS > 0) {
+            const taxFreePart = Math.min(grossUFPLS * 0.25, lifetimeRemaining);
+            const taxablePart = grossUFPLS - taxFreePart;
+            udc[pi] -= grossUFPLS;
+            yearData.pensionDrawdown[pi] += taxablePart;
+            yearData.income[pi] += taxablePart;
+            yearData.ufplsTaxFree = (yearData.ufplsTaxFree || 0) + taxFreePart;
+            // Reduce lifetime allowance by the tax-free portion used
+            pclsCumulativeTaken[pi] += taxFreePart;
+            const taxBefore = calcIncomeTax(yearData.income[pi] - taxablePart, thresh);
+            const taxAfter  = calcIncomeTax(yearData.income[pi], thresh);
+            netDelivered = taxFreePart + taxablePart - (taxAfter - taxBefore);
+            if (netDelivered >= netWanted - 1) return netDelivered;
+          }
+        }
+      }
+
+      // Draw remaining from crystallised dc (100% taxable)
+      const stillNeeded = netWanted - netDelivered;
+      if (dc[pi] > 0 && stillNeeded > 1) {
+        const gross = solveGrossForNet(stillNeeded, yearData.income[pi], thresh);
+        const draw = Math.min(dc[pi], gross);
+        yearData.pensionDrawdown[pi] += draw;
+        yearData.income[pi] += draw;
+        dc[pi] -= draw;
+        const taxBefore = calcIncomeTax(yearData.income[pi] - draw, thresh);
+        const taxAfter  = calcIncomeTax(yearData.income[pi], thresh);
+        netDelivered += draw - (taxAfter - taxBefore);
+      }
+
+      return netDelivered;
     };
 
+    // Helper: net headroom before hitting the higher rate band for person pi
+    const basicRateHeadroom = pi => Math.max(0, thresh.basicRateLimit - thresh.personalAllowance - yearData.income[pi]);
+
     if (order === 'isa-first') {
+      // ISA first, then pension — split both by pot share
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawISA(pi, remainingGap * isaShare[pi]); }
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawPension(pi, remainingGap * dcShare[pi]); }
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawISA(pi, remainingGap); remainingGap -= drawPension(pi, remainingGap); }
+
     } else if (order === 'pension-first') {
+      // Pension first — but split tax-efficiently: fill each person up to basic rate limit
+      // before letting either go into 40% tax
+      // Pass 1: draw pension from each person up to their basic rate headroom
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0) break;
+        const headroom = basicRateHeadroom(pi);
+        if (headroom > 0) remainingGap -= drawPension(pi, Math.min(remainingGap * dcShare[pi], headroom));
+      }
+      // Pass 2: if gap remains, draw more pension even into higher rate (proportional by pot)
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawPension(pi, remainingGap * dcShare[pi]); }
+      // Pass 3: ISA for remainder
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawISA(pi, remainingGap * isaShare[pi]); }
+      // Mop-up
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawISA(pi, remainingGap); remainingGap -= drawPension(pi, remainingGap); }
+
     } else {
+      // Tax-optimal: fill PA from pension (tax-free), then ISA, then higher-rate pension
       for (let pi = 0; pi < 2; pi++) {
         if (ages[pi] < p[pi].retAge || remainingGap <= 0) continue;
         const spaceInPA = Math.max(0, thresh.personalAllowance - yearData.income[pi]);
@@ -1091,12 +1153,10 @@ function runModel() {
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawISA(pi, remainingGap); remainingGap -= drawPension(pi, remainingGap); }
     }
 
-    // Last resort: if spending gap remains and udc still has funds, crystallise remainder.
+    // Last resort: if spending gap remains, try drawPension again (reads udc via UFPLS)
     if (remainingGap > 0) {
       for (let pi = 0; pi < 2; pi++) {
-        if (remainingGap <= 0 || udc[pi] <= 0 || ages[pi] < p[pi].retAge) continue;
-        const toMove = Math.min(udc[pi], remainingGap * 2);
-        udc[pi] -= toMove; dc[pi] += toMove;
+        if (remainingGap <= 0 || ages[pi] < p[pi].retAge) continue;
         remainingGap -= drawPension(pi, remainingGap);
       }
     }
@@ -1106,7 +1166,7 @@ function runModel() {
     const totalTax = yearData.tax[0] + yearData.tax[1];
     const grossTaxable = yearData.income[0] + yearData.income[1];
     const isaTotal = yearData.isaWithdrawal[0] + yearData.isaWithdrawal[1];
-    yearData.netIncome = (grossTaxable - totalTax) + isaTotal + yearData.employmentNet;
+    yearData.netIncome = (grossTaxable - totalTax) + isaTotal + yearData.employmentNet + (yearData.ufplsTaxFree || 0);
     yearData.totalTaxAll = totalTax + yearData.employmentTax;
     yearData.shortfall = Math.max(0, realSpend - yearData.netIncome);
 
@@ -1174,6 +1234,7 @@ function renderResults(results, inp) {
   const isa0 = results.map(r => r.isa[0]);
   const isa1 = results.map(r => r.isa[1]);
   const pensionDraw = results.map(r => r.pensionDrawdown[0] + r.pensionDrawdown[1]);
+  const ufplsTaxFreeAmts = results.map(r => r.ufplsTaxFree || 0);
   const isaWithdraw = results.map(r => r.isaWithdrawal[0] + r.isaWithdrawal[1]);
   const pclsAmts = results.map(r => r.pcls[0] + r.pcls[1]);
   const dbIncome = results.map(r => r.dbIncome[0] + r.dbIncome[1]);
@@ -1190,7 +1251,7 @@ function renderResults(results, inp) {
   const fundDepletionYear = fundDepletionIdx === -1 ? 'Never' : years[fundDepletionIdx];
   const totalTaxPaid = totalTax.reduce((a,b)=>a+b,0);
   const shortfallYears = shortfall.filter(s=>s>100).length;
-  const totalPCLSAllYears = pclsAmts.reduce((a,b)=>a+b,0) + (inp.persons[0].pclsAlreadyTaken || 0) + (inp.persons[1].pclsAlreadyTaken || 0);
+  const totalPCLSAllYears = pclsAmts.reduce((a,b)=>a+b,0) + ufplsTaxFreeAmts.reduce((a,b)=>a+b,0) + (inp.persons[0].pclsAlreadyTaken || 0) + (inp.persons[1].pclsAlreadyTaken || 0);
 
   document.getElementById('summary-cards-container').innerHTML = `
     <div class="card accent">
@@ -1214,9 +1275,9 @@ function renderResults(results, inp) {
       <div class="card-sub">${shortfallYears === 0 ? 'Spending target fully met' : 'Years income < spending'}</div>
     </div>
     <div class="card accent">
-      <div class="card-label">Total PCLS (lifetime)</div>
+      <div class="card-label">Tax-free Cash (lifetime)</div>
       <div class="card-value">${fmt(totalPCLSAllYears)}</div>
-      <div class="card-sub">${fmt(pclsAmts.reduce((a,b)=>a+b,0))} projected + ${fmt((inp.persons[0].pclsAlreadyTaken||0)+(inp.persons[1].pclsAlreadyTaken||0))} already taken</div>
+      <div class="card-sub">${fmt(pclsAmts.reduce((a,b)=>a+b,0) + ufplsTaxFreeAmts.reduce((a,b)=>a+b,0))} projected + ${fmt((inp.persons[0].pclsAlreadyTaken||0)+(inp.persons[1].pclsAlreadyTaken||0))} already taken</div>
     </div>`;
 
   document.getElementById('cashflow-legend').innerHTML = `
@@ -1225,6 +1286,7 @@ function renderResults(results, inp) {
     <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>ISA Withdrawal</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>DB Pension</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--sp)"></div>State Pension</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(160,210,180,0.75)"></div>UFPLS (tax-free)</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>PCLS</div>
     <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,80,0.7)"></div>Spending</div>`;
   document.getElementById('assets-legend').innerHTML = `
@@ -1245,6 +1307,7 @@ function renderResults(results, inp) {
           { label: 'ISA Withdrawal', data: isaWithdraw, backgroundColor: 'rgba(143,176,122,0.75)', stack: 'income' },
           { label: 'DB Pension', data: dbIncome, backgroundColor: 'rgba(176,122,217,0.75)', stack: 'income' },
           { label: 'State Pension', data: spIncome, backgroundColor: 'rgba(201,126,126,0.75)', stack: 'income' },
+          { label: 'UFPLS (tax-free)', data: ufplsTaxFreeAmts, backgroundColor: 'rgba(160,210,180,0.75)', stack: 'income' },
           { label: 'PCLS', data: pclsAmts, backgroundColor: 'rgba(126,184,201,0.75)', stack: 'income' },
           { label: 'Spending Target', data: spending, type: 'line', borderColor: 'rgba(224,120,80,0.9)', borderWidth: 2, pointRadius: 0, borderDash: [4,3], fill: false, stack: undefined },
         ]
@@ -1316,9 +1379,10 @@ function renderResults(results, inp) {
     function updateDonut(r) {
       const isaAmt  = r.isaWithdrawal[0] + r.isaWithdrawal[1];
       const pclsAmt = r.pcls[0] + r.pcls[1];
+      const ufplsTF = r.ufplsTaxFree || 0;
       const taxAmt  = r.totalTaxAll || r.totalTax;
       const netAmt  = r.netIncome;
-      const netTaxable = Math.max(0, netAmt - isaAmt - pclsAmt);
+      const netTaxable = Math.max(0, netAmt - isaAmt - pclsAmt - ufplsTF);
       // Update title to show year
       const [dn0, dn1] = getNames();
       document.getElementById('donut-year-label').textContent = r.year + '  ·  ' + dn0 + ' age ' + r.ages[0] + (r.ages[1] !== r.ages[0] ? '  ·  ' + dn1 + ' age ' + r.ages[1] : '');
@@ -1330,10 +1394,10 @@ function renderResults(results, inp) {
         chartInstances['tax-donut'] = new Chart(document.getElementById('tax-donut'), {
           type: 'doughnut',
           data: {
-            labels: ['Net Income', 'Tax & NI', 'ISA (tax-free)', 'PCLS (tax-free)'],
+            labels: ['Net Income', 'Tax & NI', 'ISA (tax-free)', 'PCLS (tax-free)', 'UFPLS (tax-free)'],
             datasets: [{
-              data: [netTaxable, taxAmt, isaAmt, pclsAmt],
-              backgroundColor: ['rgba(200,169,110,0.8)','rgba(224,120,80,0.8)','rgba(143,176,122,0.8)','rgba(126,184,201,0.8)'],
+              data: [netTaxable, taxAmt, isaAmt, pclsAmt, ufplsTF],
+              backgroundColor: ['rgba(200,169,110,0.8)','rgba(224,120,80,0.8)','rgba(143,176,122,0.8)','rgba(126,184,201,0.8)','rgba(160,210,180,0.8)'],
               borderWidth: 0,
             }]
           },
