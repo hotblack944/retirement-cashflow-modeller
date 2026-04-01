@@ -264,6 +264,9 @@
           <div class="field-sub"><span class="tip-wrap">Current Pot (£)<i class="tip-icon">?</i><span class="tip-bubble">Your total DC pension or SIPP pot value today. Defined contribution — its final value depends on investment growth and withdrawals.</span></span><input type="number" id="p0-dc" value="450000" step="1000"></div>
           <div class="field-sub"><span class="tip-wrap">Annual Contrib. (£)<i class="tip-icon">?</i><span class="tip-bubble">Any fixed annual amount you are adding to the pension pot outside of employment (e.g. a personal SIPP contribution).</span></span><input type="number" id="p0-dccontrib" value="0" step="500"></div>
         </div>
+        <div class="field-row" style="margin-top:8px">
+          <div class="field-sub"><span class="tip-wrap">Of which Crystallised (£)<i class="tip-icon">?</i><span class="tip-bubble">The portion of your pension pot already in drawdown (crystallised). This cannot generate future PCLS — only the uncrystallised remainder can. If you have never taken any pension income yet, leave this as 0.</span></span><input type="number" id="p0-dccrystallised" value="0" step="1000" min="0"></div>
+        </div>
       </div>
       <div class="field-group">
         <div class="field-row">
@@ -355,6 +358,9 @@
         <div class="field-row">
           <div class="field-sub"><span class="tip-wrap">Current Pot (£)<i class="tip-icon">?</i><span class="tip-bubble">Your total DC pension or SIPP pot value today. Defined contribution — its final value depends on investment growth and withdrawals.</span></span><input type="number" id="p1-dc" value="180000" step="1000"></div>
           <div class="field-sub"><span class="tip-wrap">Annual Contrib. (£)<i class="tip-icon">?</i><span class="tip-bubble">Any fixed annual amount you are adding to the pension pot outside of employment (e.g. a personal SIPP contribution).</span></span><input type="number" id="p1-dccontrib" value="0" step="500"></div>
+        </div>
+        <div class="field-row" style="margin-top:8px">
+          <div class="field-sub"><span class="tip-wrap">Of which Crystallised (£)<i class="tip-icon">?</i><span class="tip-bubble">The portion of your pension pot already in drawdown (crystallised). This cannot generate future PCLS — only the uncrystallised remainder can. If you have never taken any pension income yet, leave this as 0.</span></span><input type="number" id="p1-dccrystallised" value="0" step="1000" min="0"></div>
         </div>
       </div>
       <div class="field-group">
@@ -609,9 +615,9 @@ function switchPerson(n) {
 // FIELD IDS — single source of truth
 // =============================================
 const FIELD_IDS = [
-  'p0-age','p0-retage','p0-dc','p0-pclstaken','p0-pcls-strategy','p0-pcls-annual-rate','p0-dccontrib','p0-db','p0-dbage','p0-dbreduced','p0-dbreducedage','p0-sp','p0-spage','p0-isa','p0-isacontrib',
+  'p0-age','p0-retage','p0-dc','p0-dccrystallised','p0-pclstaken','p0-pcls-strategy','p0-pcls-annual-rate','p0-dccontrib','p0-db','p0-dbage','p0-dbreduced','p0-dbreducedage','p0-sp','p0-spage','p0-isa','p0-isacontrib',
   'p0-salary','p0-salarygrowth','p0-sacrifice','p0-empcontribpct','p0-empcontribvia','p0-employer',
-  'p1-age','p1-retage','p1-dc','p1-pclstaken','p1-pcls-strategy','p1-pcls-annual-rate','p1-dccontrib','p1-db','p1-dbage','p1-dbreduced','p1-dbreducedage','p1-sp','p1-spage','p1-isa','p1-isacontrib',
+  'p1-age','p1-retage','p1-dc','p1-dccrystallised','p1-pclstaken','p1-pcls-strategy','p1-pcls-annual-rate','p1-dccontrib','p1-db','p1-dbage','p1-dbreduced','p1-dbreducedage','p1-sp','p1-spage','p1-isa','p1-isacontrib',
   'p1-salary','p1-salarygrowth','p1-sacrifice','p1-empcontribpct','p1-empcontribvia','p1-employer',
   'spending','endage','spend-reduction-pct','spend-reduction-every','spend-reduction-age',
   'growth','inflation','p0-pcls-strategy','p0-pcls-annual-rate','p1-pcls-strategy','p1-pcls-annual-rate','drawdown-order','allowance-uprating','freeze-until'
@@ -637,7 +643,7 @@ function getInputs() {
         active: p1active,
         age: p1active ? g('p0-age') : (p2active ? g('p1-age') : 0),
         retAge: p1active ? (g('p0-retage') || 999) : 999,
-        dc: p1active ? g('p0-dc') : 0, dcContrib: p1active ? g('p0-dccontrib') : 0,
+        dc: p1active ? g('p0-dc') : 0, dcCrystallised: p1active ? Math.min(g('p0-dccrystallised'), g('p0-dc')) : 0, dcContrib: p1active ? g('p0-dccontrib') : 0,
         pclsAlreadyTaken: p1active ? g('p0-pclstaken') : 0,
         pclsStrategy: p1active ? s('p0-pcls-strategy') : 'none', pclsAnnualRate: p1active ? Math.max(1000, g('p0-pcls-annual-rate') || 20000) : 0,
         db: p1active ? g('p0-db') : 0, dbAge: p1active ? (g('p0-dbage') || 999) : 999,
@@ -652,7 +658,7 @@ function getInputs() {
         active: p2active,
         age: p2active ? g('p1-age') : g('p0-age'),
         retAge: p2active ? (g('p1-retage') || 999) : 999,
-        dc: p2active ? g('p1-dc') : 0, dcContrib: p2active ? g('p1-dccontrib') : 0,
+        dc: p2active ? g('p1-dc') : 0, dcCrystallised: p2active ? Math.min(g('p1-dccrystallised'), g('p1-dc')) : 0, dcContrib: p2active ? g('p1-dccontrib') : 0,
         pclsAlreadyTaken: p2active ? g('p1-pclstaken') : 0,
         pclsStrategy: p2active ? s('p1-pcls-strategy') : 'none', pclsAnnualRate: p2active ? Math.max(1000, g('p1-pcls-annual-rate') || 20000) : 0,
         db: p2active ? g('p1-db') : 0, dbAge: p2active ? (g('p1-dbage') || 999) : 999,
@@ -817,7 +823,7 @@ function updatePclsHint(pi) {
   const entitlement = Math.max(0, Math.min(dc * 0.25, 268275 - taken));
   const yrs = entitlement > 0 && rate > 0 ? (entitlement / rate).toFixed(1) : '—';
   const hint = document.getElementById(prefix + '-pcls-rate-hint');
-  if (hint) hint.textContent = `Entitlement ≈ £${Math.round(entitlement).toLocaleString()} → ~${yrs} yrs at £${Math.round(rate).toLocaleString()}/yr`;
+  if (hint) hint.textContent = `Current 25% entitlement ≈ £${Math.round(entitlement).toLocaleString()}. Taking less each year leaves more in the pot to grow, increasing future entitlement.`;
 }
 
 ['p0-pcls-annual-rate','p1-pcls-annual-rate','p0-dc','p1-dc','p0-pclstaken','p1-pclstaken'].forEach(id => {
@@ -837,7 +843,13 @@ function runModel() {
   const baseAge = (p[0].active && p[1].active) ? Math.min(p[0].age, p[1].age) : p[0].active ? p[0].age : p[1].age;
   const years = inp.endAge - baseAge;
 
-  let dc = [p[0].dc, p[1].dc];
+  // dc[pi] = crystallised drawdown pot (can be spent, cannot generate PCLS)
+  // udc[pi] = uncrystallised pot (generates PCLS at 25%, grows tax-free until crystallised)
+  // At retirement for ISA-paced: entire pot moves to udc. Crystallisation happens in two ways:
+  //   1. PCLS crystallisation: take 25% as PCLS, 75% moves to dc
+  //   2. Spending crystallisation: when dc is short, move uncrystallised to dc at 100% (no PCLS)
+  let dc = [p[0].dc, p[1].dc];   // starts as full pot; ISA-paced moves it to udc at retirement
+  let udc = [0, 0];               // uncrystallised — populated at ISA-paced retirement trigger
   let isa = [p[0].isa, p[1].isa];
   let pclsTaken = [
     (p[0].pclsAlreadyTaken || 0) >= 268275,
@@ -845,9 +857,8 @@ function runModel() {
   ];
   let pclsSpreadYearsLeft = [0, 0];
   let pclsCumulativeTaken = [p[0].pclsAlreadyTaken || 0, p[1].pclsAlreadyTaken || 0];
-  // For ISA-paced: lock in the 25% entitlement at trigger time so instalments sum to exactly that
-  let pclsIsaPacedEntitlement = [0, 0];
-  let pclsIsaPacedTaken = [0, 0];
+
+
   const results = [];
 
   for (let y = 0; y < years; y++) {
@@ -941,49 +952,72 @@ function runModel() {
     };
 
     for (let pi = 0; pi < 2; pi++) {
-      // Trigger block: only when pot has funds and strategy not none
-      if (dc[pi] > 0 && p[pi].pclsStrategy !== 'none') {
-        const alreadyRetired = p[pi].age >= p[pi].retAge;
-        const retirementYear = !alreadyRetired && ages[pi] === p[pi].retAge;
-        const alreadyRetiredYear0 = alreadyRetired && y === 0;
-        if (!pclsTaken[pi] && (retirementYear || alreadyRetiredYear0)) {
-          if (p[pi].pclsStrategy === 'max') {
-            const amt = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
-            if (amt > 0) {
-              yearData.pcls[pi] = amt;
-              dc[pi] -= amt;
-              pclsCumulativeTaken[pi] += amt;
-              // 'Take Max' PCLS is spent outside the model — not recycled into ISA
-            }
-            pclsTaken[pi] = true;
-          } else if (p[pi].pclsStrategy === 'isa-paced') {
-            pclsIsaPacedEntitlement[pi] = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
-            pclsSpreadYearsLeft[pi] = -1;
-            pclsTaken[pi] = true;
+      if (p[pi].pclsStrategy === 'none') continue;
+      const alreadyRetired = p[pi].age >= p[pi].retAge;
+      const retirementYear = !alreadyRetired && ages[pi] === p[pi].retAge;
+      const alreadyRetiredYear0 = alreadyRetired && y === 0;
+
+      // Activate PCLS at retirement
+      if (!pclsTaken[pi] && (retirementYear || alreadyRetiredYear0)) {
+        if (p[pi].pclsStrategy === 'max') {
+          // Take max 25% immediately from crystallised pot — spent outside model
+          const amt = Math.max(0, Math.min(dc[pi] * 0.25, 268275 - pclsCumulativeTaken[pi]));
+          if (amt > 0) {
+            yearData.pcls[pi] = amt;
+            dc[pi] -= amt;
+            pclsCumulativeTaken[pi] += amt;
           }
+          pclsTaken[pi] = true;
+        } else if (p[pi].pclsStrategy === 'isa-paced') {
+          // Split pot into crystallised (stays in dc) and uncrystallised (moves to udc)
+          const alreadyCrystallised = Math.min(p[pi].dcCrystallised || 0, dc[pi]);
+          udc[pi] = dc[pi] - alreadyCrystallised;
+          dc[pi] = alreadyCrystallised; // crystallised portion stays in drawdown pot
+          pclsSpreadYearsLeft[pi] = -1;
+          pclsTaken[pi] = true;
         }
       }
-      // ISA-paced instalment: runs every year regardless of pot balance until entitlement exhausted
-      if (pclsSpreadYearsLeft[pi] === -1) {
-        const remainingEntitlement = Math.max(0, pclsIsaPacedEntitlement[pi] - pclsIsaPacedTaken[pi]);
-        if (remainingEntitlement <= 0) {
+
+      // ISA-paced: each year crystallise from udc to generate PCLS
+      // PCLS = 25% of udc crystallised. The other 75% moves to dc for spending.
+      // Taking less PCLS = less crystallised = more udc left to grow = more PCLS available next year.
+      if (pclsSpreadYearsLeft[pi] === -1 && udc[pi] > 0) {
+        const lifetimeRemaining = Math.max(0, 268275 - pclsCumulativeTaken[pi]);
+        if (lifetimeRemaining <= 0) {
+          // Lifetime limit hit — move all remaining udc to dc without PCLS
+          dc[pi] += udc[pi];
+          udc[pi] = 0;
           pclsSpreadYearsLeft[pi] = 0;
         } else {
           const householdRemaining = Math.max(0, p[pi].pclsAnnualRate - pclsHouseholdTakenThisYear);
-          // Entitlement is a right even if pot is empty from drawdown
-          const actualInstalment = dc[pi] > 0
-            ? Math.max(0, Math.min(householdRemaining, remainingEntitlement, dc[pi]))
-            : Math.max(0, Math.min(householdRemaining, remainingEntitlement));
-          if (actualInstalment > 0) {
-            yearData.pcls[pi] += actualInstalment;
-            if (dc[pi] > 0) dc[pi] -= actualInstalment;
-            pclsCumulativeTaken[pi] += actualInstalment;
-            pclsIsaPacedTaken[pi] += actualInstalment;
-            pclsHouseholdTakenThisYear += actualInstalment;
-            routePclsToIsa(pi, actualInstalment);
+          // Max PCLS = 25% of udc, capped at lifetime remaining and annual rate
+          const pclsThisYear = Math.max(0, Math.min(householdRemaining, udc[pi] * 0.25, lifetimeRemaining));
+          if (pclsThisYear > 0) {
+            const toCrystallise = pclsThisYear / 0.25;  // crystallise 4× the PCLS amount
+            udc[pi] -= toCrystallise;
+            dc[pi] += toCrystallise * 0.75;             // 75% to drawdown pot
+            yearData.pcls[pi] += pclsThisYear;
+            pclsCumulativeTaken[pi] += pclsThisYear;
+            pclsHouseholdTakenThisYear += pclsThisYear;
+            routePclsToIsa(pi, pclsThisYear);
           }
-          if (pclsIsaPacedTaken[pi] >= pclsIsaPacedEntitlement[pi]) pclsSpreadYearsLeft[pi] = 0;
+          if (pclsCumulativeTaken[pi] >= 268275) {
+            dc[pi] += udc[pi]; udc[pi] = 0;
+            pclsSpreadYearsLeft[pi] = 0;
+          }
         }
+      } else if (pclsSpreadYearsLeft[pi] === -1 && udc[pi] <= 0) {
+        pclsSpreadYearsLeft[pi] = 0;
+      }
+    }
+
+    // After PCLS: if dc is short for spending, crystallise from udc without PCLS.
+    // This uses up uncrystallised funds (reducing future PCLS) but prevents shortfalls.
+    for (let pi = 0; pi < 2; pi++) {
+      if (udc[pi] > 0 && pclsSpreadYearsLeft[pi] !== -1) {
+        // PCLS finished — move all remaining udc to dc
+        dc[pi] += udc[pi];
+        udc[pi] = 0;
       }
     }
 
@@ -996,10 +1030,25 @@ function runModel() {
     const netNeededFromDrawdown = Math.max(0, realSpend - taxFreeAlready - dbSpNet);
     const order = inp.drawdownOrder;
     let remainingGap = netNeededFromDrawdown;
-    const totalDC = dc[0] + dc[1];
+    // For drawdown share calculations, pension pot = crystallised dc + uncrystallised udc combined
+    const totalDC = (dc[0] + udc[0]) + (dc[1] + udc[1]);
     const totalISA = isa[0] + isa[1];
-    const dcShare = [totalDC > 0 ? dc[0]/totalDC : 0.5, totalDC > 0 ? dc[1]/totalDC : 0.5];
+    const totalPension = [dc[0] + udc[0], dc[1] + udc[1]];
+    const dcShare = [totalDC > 0 ? totalPension[0]/totalDC : 0.5, totalDC > 0 ? totalPension[1]/totalDC : 0.5];
     const isaShare = [totalISA > 0 ? isa[0]/totalISA : 0.5, totalISA > 0 ? isa[1]/totalISA : 0.5];
+
+    // For pension-first and tax-optimal: pre-crystallise udc so drawPension can access it.
+    // We crystallise exactly what's needed for spending (no PCLS — that's already been taken).
+    // ISA-first doesn't pre-crystallise — it avoids pension where possible.
+    if (order !== 'isa-first') {
+      for (let pi = 0; pi < 2; pi++) {
+        if (udc[pi] <= 0 || ages[pi] < p[pi].retAge) continue;
+        // Crystallise enough to cover this person's share of net spending need from pension
+        const needed = netNeededFromDrawdown * dcShare[pi] * 1.5; // 1.5× buffer for tax gross-up
+        const toMove = Math.min(udc[pi], Math.max(0, needed - dc[pi]));
+        if (toMove > 0) { udc[pi] -= toMove; dc[pi] += toMove; }
+      }
+    }
 
     const drawISA = (pi, netWanted) => {
       if (ages[pi] < p[pi].retAge) return 0;
@@ -1010,6 +1059,8 @@ function runModel() {
     };
     const drawPension = (pi, netWanted) => {
       if (ages[pi] < p[pi].retAge || dc[pi] <= 0 || netWanted <= 0) return 0;
+      // dc only contains crystallised funds — udc is separate and untouched by drawdown.
+      // No reservation needed: PCLS comes from udc, drawdown comes from dc.
       const gross = solveGrossForNet(netWanted, yearData.income[pi], thresh);
       const draw = Math.min(dc[pi], gross);
       yearData.pensionDrawdown[pi] += draw;
@@ -1040,6 +1091,16 @@ function runModel() {
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawISA(pi, remainingGap); remainingGap -= drawPension(pi, remainingGap); }
     }
 
+    // Last resort: if spending gap remains and udc still has funds, crystallise remainder.
+    if (remainingGap > 0) {
+      for (let pi = 0; pi < 2; pi++) {
+        if (remainingGap <= 0 || udc[pi] <= 0 || ages[pi] < p[pi].retAge) continue;
+        const toMove = Math.min(udc[pi], remainingGap * 2);
+        udc[pi] -= toMove; dc[pi] += toMove;
+        remainingGap -= drawPension(pi, remainingGap);
+      }
+    }
+
     yearData.tax = [0, 0];
     for (let pi = 0; pi < 2; pi++) yearData.tax[pi] = calcIncomeTax(yearData.income[pi], thresh);
     const totalTax = yearData.tax[0] + yearData.tax[1];
@@ -1051,14 +1112,16 @@ function runModel() {
 
     for (let pi = 0; pi < 2; pi++) {
       if (ages[pi] >= p[pi].retAge) {
-        dc[pi] = Math.max(0, dc[pi]) * (1 + inp.growth);
+        dc[pi]  = Math.max(0, dc[pi])  * (1 + inp.growth);
+        udc[pi] = Math.max(0, udc[pi]) * (1 + inp.growth);
         isa[pi] = Math.max(0, isa[pi]) * (1 + inp.growth);
       }
     }
 
     yearData.dc = [...dc];
+    yearData.udc = [...udc];
     yearData.isa = [...isa];
-    yearData.totalAssets = dc[0] + dc[1] + isa[0] + isa[1];
+    yearData.totalAssets = dc[0] + dc[1] + udc[0] + udc[1] + isa[0] + isa[1];
     yearData.totalTax = totalTax;
     yearData.realSpend = realSpend;
     results.push(yearData);
@@ -1106,8 +1169,8 @@ function renderResults(results, inp) {
   const totalTax = results.map(r => r.totalTaxAll || r.totalTax);
   const spending = results.map(r => r.realSpend);
   const shortfall = results.map(r => r.shortfall);
-  const dc0 = results.map(r => r.dc[0]);
-  const dc1 = results.map(r => r.dc[1]);
+  const dc0 = results.map(r => (r.dc[0] || 0) + (r.udc ? r.udc[0] || 0 : 0));
+  const dc1 = results.map(r => (r.dc[1] || 0) + (r.udc ? r.udc[1] || 0 : 0));
   const isa0 = results.map(r => r.isa[0]);
   const isa1 = results.map(r => r.isa[1]);
   const pensionDraw = results.map(r => r.pensionDrawdown[0] + r.pensionDrawdown[1]);
