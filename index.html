@@ -1118,6 +1118,19 @@ function runModel() {
     // Helper: net headroom before hitting the higher rate band for person pi
     const basicRateHeadroom = pi => Math.max(0, thresh.basicRateLimit - thresh.personalAllowance - yearData.income[pi]);
 
+    // BASELINE: before any strategy runs, ensure each retired person draws at least enough
+    // pension to fill their personal allowance (tax-free). This applies to ALL strategies —
+    // leaving PA unused is always wasteful. Only draw what's still needed from spending gap.
+    for (let pi = 0; pi < 2; pi++) {
+      if (ages[pi] < p[pi].retAge || remainingGap <= 0) continue;
+      const paHeadroom = Math.max(0, thresh.personalAllowance - yearData.income[pi]);
+      if (paHeadroom > 0) {
+        // Draw pension up to PA headroom, but no more than the remaining spending gap
+        const paWant = Math.min(paHeadroom, remainingGap);
+        remainingGap -= drawPension(pi, paWant);
+      }
+    }
+
     if (order === 'isa-first') {
       // ISA first, then pension — split both by pot share
       for (let pi = 0; pi < 2; pi++) { if (remainingGap <= 0) break; remainingGap -= drawISA(pi, remainingGap * isaShare[pi]); }
