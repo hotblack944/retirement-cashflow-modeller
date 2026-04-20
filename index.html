@@ -66,6 +66,25 @@
   .file-btn.primary { background: rgba(200,169,110,0.12); border-color: rgba(200,169,110,0.35); color: var(--accent); }
   .file-btn.primary:hover { background: rgba(200,169,110,0.22); }
   .file-btn svg { flex-shrink: 0; }
+  /* Filename badge shown after a file is loaded */
+  .file-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: rgba(143,176,122,0.08);
+    color: var(--accent3);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    max-width: 220px;
+    overflow: hidden;
+  }
+  .file-badge.visible { display: flex; }
+  .file-badge svg { flex-shrink: 0; }
+  .file-badge-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #toast { position: absolute; bottom: 28px; right: 28px; background: var(--surface2); border: 1px solid var(--accent3); color: var(--accent3); padding: 10px 18px; border-radius: 5px; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.04em; opacity: 0; transform: translateY(10px); transition: opacity 0.25s, transform 0.25s; pointer-events: none; z-index: 99; }
   #toast.show { opacity: 1; transform: translateY(0); }
   #toast.error { border-color: var(--accent4); color: var(--accent4); }
@@ -130,12 +149,6 @@
   .run-btn:hover { opacity: 0.88; }
   .run-btn:active { transform: scale(0.98); }
   .main { padding: 28px 32px; overflow-y: auto; background: var(--bg); }
-  .save-panel { display: none; background: var(--surface); border: 1px solid var(--accent); border-radius: 6px; padding: 18px 20px; margin: 0 0 18px 0; }
-  .save-panel.open { display: block; }
-  .save-panel-title { font-family: 'Playfair Display', serif; font-size: 0.9rem; color: var(--accent); margin-bottom: 8px; }
-  .save-panel-sub { font-size: 0.76rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 10px; }
-  .save-panel textarea { width: 100%; height: 160px; background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); font-family: monospace; font-size: 0.72rem; padding: 10px; border-radius: 4px; resize: vertical; margin-bottom: 10px; }
-  .save-panel-btns { display: flex; gap: 10px; justify-content: flex-end; }
   .summary-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 28px; }
   .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 16px 18px; }
   .card-label { font-size: 0.7rem; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
@@ -194,13 +207,20 @@
   <p>UK · Couples · Tax-efficient drawdown planning</p>
 
   <div class="file-btns">
+    <!-- Filename badge: shown after a file is loaded -->
+    <div class="file-badge" id="file-badge">
+      <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
+        <path d="M2 2h5l2 2h3v8H2V2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" fill="none"/>
+      </svg>
+      <span class="file-badge-name" id="file-badge-name"></span>
+    </div>
     <button class="file-btn" onclick="importFromFile()" title="Load a previously saved scenario">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         <path d="M2 10v2h10v-2M7 2v7M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       Load Scenario
     </button>
-    <button class="file-btn primary" onclick="exportToFile()" title="Save all inputs to a JSON file">
+    <button class="file-btn primary" onclick="exportToFile()" title="Save scenario as a JSON file">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
         <path d="M2 10v2h10v-2M7 9V2M4 5l3-3 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
@@ -481,15 +501,6 @@
 
   <!-- ====== MAIN PANEL ====== -->
   <main class="main" id="main-panel">
-    <div class="save-panel" id="save-panel">
-      <div class="save-panel-title">Save Scenario</div>
-      <div class="save-panel-sub">Copy the JSON below and paste it into a text file saved as <strong>retirement-scenario.json</strong>. Load it back anytime with the Load Scenario button.</div>
-      <textarea id="save-panel-text" readonly spellcheck="false"></textarea>
-      <div class="save-panel-btns">
-        <button class="file-btn" onclick="closeSavePanel()">✕ Close</button>
-        <button class="file-btn primary" onclick="copySaveText()">⎘ Copy to Clipboard</button>
-      </div>
-    </div>
     <div class="placeholder" id="placeholder">
       <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
         <rect x="4" y="36" width="8" height="24" rx="2" fill="currentColor"/>
@@ -550,6 +561,24 @@
 </div>
 
 <script>
+// =============================================
+// FILE NAME TRACKING
+// =============================================
+let currentFileName = 'retirement-scenario.json';
+
+function setCurrentFile(name) {
+  currentFileName = name;
+  const badge = document.getElementById('file-badge');
+  const badgeName = document.getElementById('file-badge-name');
+  if (name && name !== 'retirement-scenario.json') {
+    badgeName.textContent = name;
+    badge.classList.add('visible');
+    badge.title = name;
+  } else {
+    badge.classList.remove('visible');
+  }
+}
+
 // =============================================
 // UK TAX CONSTANTS (2024/25)
 // =============================================
@@ -723,42 +752,32 @@ function applyState(state) {
   return applied;
 }
 
-/** Export current inputs to a .json file download */
+/**
+ * Directly trigger a browser download of the scenario JSON.
+ * Uses the remembered filename from the last load, or the default.
+ */
 function exportToFile() {
   try {
     const state = collectState();
     const json = JSON.stringify(state, null, 2);
-    document.getElementById('save-panel-text').value = json;
-    document.getElementById('save-panel').classList.add('open');
-    document.getElementById('save-panel-text').select();
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = currentFileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast('✓ Saved as ' + currentFileName);
   } catch (e) {
     showToast('✗ Save failed: ' + e.message, true);
   }
 }
 
-function closeSavePanel() {
-  document.getElementById('save-panel').classList.remove('open');
-}
-
-function copySaveText() {
-  const ta = document.getElementById('save-panel-text');
-  ta.select();
-  try {
-    navigator.clipboard.writeText(ta.value).then(() => {
-      showToast('✓ Copied to clipboard — paste into a .json file');
-    }).catch(() => {
-      document.execCommand('copy');
-      showToast('✓ Copied to clipboard — paste into a .json file');
-    });
-  } catch(e) {
-    document.execCommand('copy');
-    showToast('✓ Copied — paste into a .json file to save');
-  }
-}
-
 /** Trigger file picker to import a scenario */
 function importFromFile() {
-  document.getElementById('file-input').value = ''; // reset so same file can be reloaded
+  document.getElementById('file-input').value = '';  // reset so same file can be reloaded
   document.getElementById('file-input').click();
 }
 
@@ -777,8 +796,10 @@ document.getElementById('file-input').addEventListener('change', function(e) {
       if (typeof state !== 'object' || state === null) throw new Error('Invalid file format');
       const applied = applyState(state);
       if (applied === 0) throw new Error('No recognised fields found — wrong file?');
-      saveInputs(); // persist to localStorage too
-      showToast('✓ Scenario loaded — ' + applied + ' fields restored');
+      // Remember the filename so Save writes back to the same file
+      setCurrentFile(file.name);
+      saveInputs();
+      showToast('✓ Loaded ' + file.name + ' — ' + applied + ' fields restored');
       setTimeout(runModel, 150);
     } catch (err) {
       showToast('✗ Load failed: ' + err.message, true);
@@ -1036,8 +1057,6 @@ function runModel() {
     const totalPension = [dc[0] + udc[0], dc[1] + udc[1]];
     const dcShare = [totalDC > 0 ? totalPension[0]/totalDC : 0.5, totalDC > 0 ? totalPension[1]/totalDC : 0.5];
     const isaShare = [totalISA > 0 ? isa[0]/totalISA : 0.5, totalISA > 0 ? isa[1]/totalISA : 0.5];
-
-
 
     const drawISA = (pi, netWanted) => {
       if (ages[pi] < p[pi].retAge) return 0;
@@ -1394,13 +1413,12 @@ function renderResults(results, inp) {
       const pclsAmt = r.pcls[0] + r.pcls[1];
       const ufplsTF = r.ufplsTaxFree || 0;
       const taxAmt  = r.totalTaxAll || r.totalTax;
-      const netAmt  = r.netIncome;
-      const netTaxable = Math.max(0, netAmt - isaAmt - pclsAmt - ufplsTF);
+      const netTaxable = Math.max(0, r.netIncome - isaAmt - ufplsTF);
       // Update title to show year
       const [dn0, dn1] = getNames();
       document.getElementById('donut-year-label').textContent = r.year + '  ·  ' + dn0 + ' age ' + r.ages[0] + (r.ages[1] !== r.ages[0] ? '  ·  ' + dn1 + ' age ' + r.ages[1] : '');
       if (chartInstances['tax-donut']) {
-        chartInstances['tax-donut'].data.datasets[0].data = [netTaxable, taxAmt, isaAmt, pclsAmt];
+        chartInstances['tax-donut'].data.datasets[0].data = [netTaxable, taxAmt, isaAmt, pclsAmt, ufplsTF];
         chartInstances['tax-donut'].update();
       } else {
         destroyChart('tax-donut');
@@ -1488,8 +1506,7 @@ function generateTips(results, inp) {
     tips.push({ cls: 'info', title: 'Income Splitting Opportunity', body: `There is a significant income disparity between ${n0} (${fmt(p0max)}) and ${n1} (${fmt(p1max)}) at peak years. If the lower earner has unused personal allowance, consider transferring assets or taking pension income via the lower earner's pot.` });
   }
   const ages = [p[0].age, p[1].age];
-  const ages0 = p[0].age;
-  const yearsToSP0 = p[0].active ? p[0].spAge - ages0 : Infinity;
+  const yearsToSP0 = p[0].active ? p[0].spAge - p[0].age : Infinity;
   const yearsToSP1 = p[1].active ? p[1].spAge - p[1].age : Infinity;
   const yearsToSP = Math.min(yearsToSP0, yearsToSP1);
   if (yearsToSP > 3) {
@@ -1511,7 +1528,7 @@ function toggleTable() {
 }
 
 // =============================================
-// PERSIST TO localStorage (unchanged)
+// PERSIST TO localStorage
 // =============================================
 const STORAGE_KEY = 'rcm_inputs_v1';
 
