@@ -546,7 +546,40 @@
       <div id="summary-cards-container" class="summary-cards" style="margin-bottom:28px"></div>
       <div class="chart-row">
         <div class="chart-box">
-          <div class="chart-title">Annual Cashflow <span>Net income vs target spending</span></div>
+          <div class="chart-title">Annual Cashflow
+            <span style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              Net income vs target spending
+              <!-- PLSA Retirement Living Standards overlay toggles -->
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.72rem;color:var(--text-muted);font-weight:400;letter-spacing:0.03em">
+                <input type="checkbox" id="rls-toggle" style="accent-color:var(--accent2);cursor:pointer" onchange="rebuildCashflowChart()">
+                PLSA Standards
+                <span class="tip-wrap">
+                  <i class="tip-icon">?</i>
+                  <span class="tip-bubble" style="width:260px">
+                    <strong style="color:var(--text)">PLSA Retirement Living Standards (2025/26)</strong><br>
+                    Three benchmark spending levels from the Pensions &amp; Lifetime Savings Association, uprated each year with the model's inflation assumption.<br><br>
+                    <span style="color:rgba(143,176,122,0.9)">■</span> <strong>Comfortable</strong> — 3-wk holiday abroad, beauty treatments, theatre, £42/wk eating out.<br>
+                    <span style="color:rgba(232,184,75,0.9)">■</span> <strong>Moderate</strong> — Annual foreign holiday, car, £32/wk eating out.<br>
+                    <span style="color:rgba(201,126,126,0.8)">■</span> <strong>Minimum</strong> — Basic needs met, 1-wk UK holiday, no car, £30/mo eating out.<br><br>
+                    Figures exclude housing costs (assumes mortgage-free). Single-person or couple values are selected automatically based on whether Person 2 is configured.
+                  </span>
+                </span>
+              </label>
+              <label id="rls-london-label" style="display:none;align-items:center;gap:5px;cursor:pointer;font-size:0.72rem;color:var(--text-muted);font-weight:400;letter-spacing:0.03em">
+                <input type="checkbox" id="rls-london" style="accent-color:var(--accent2);cursor:pointer" onchange="rebuildCashflowChart()">
+                London
+                <span class="tip-wrap">
+                  <i class="tip-icon">?</i>
+                  <span class="tip-bubble" style="width:240px">
+                    <strong style="color:var(--text)">London premium (2025/26)</strong><br>
+                    Switches to the higher PLSA figures for London, which reflect the city's elevated housing-related and transport costs.<br><br>
+                    <span style="font-size:0.68rem;color:var(--text-dim)">1-person:&nbsp;</span>Min £15,800 · Mod £33,000 · Com £45,700<br>
+                    <span style="font-size:0.68rem;color:var(--text-dim)">2-person:&nbsp;</span>Min £24,800 · Mod £45,500 · Com £62,700
+                  </span>
+                </span>
+              </label>
+            </span>
+          </div>
           <canvas id="cashflow-chart" height="200"></canvas>
           <div class="legend" style="margin-top:12px" id="cashflow-legend"></div>
         </div>
@@ -607,6 +640,21 @@ function setCurrentFile(name) {
     badge.classList.remove('visible');
   }
 }
+
+// =============================================
+// PLSA RETIREMENT LIVING STANDARDS (2025/26)
+// Figures from retirementlivingstandards.org.uk
+// After-tax annual expenditure (not gross income).
+// Uprated each year in line with the model's inflation assumption.
+// =============================================
+const RLS = {
+  // Outside London
+  single:   { min: 13400, mod: 31700, com: 43900 },
+  couple:   { min: 21600, mod: 43900, com: 60600 },
+  // London
+  singleLon:{ min: 15800, mod: 33000, com: 45700 },
+  coupleLon:{ min: 24800, mod: 45500, com: 62700 },
+};
 
 // =============================================
 // UK TAX CONSTANTS (2024/25)
@@ -680,7 +728,8 @@ const FIELD_IDS = [
   'p1-cisa','p1-cisacontrib',
   'p1-salary','p1-salarygrowth','p1-sacrifice','p1-empcontribpct','p1-empcontribvia','p1-employer',
   'spending','endage','spend-reduction-pct','spend-reduction-every','spend-reduction-age',
-  'growth','inflation','cisa-growth','sp-wage-growth','p0-pcls-strategy','p0-pcls-annual-rate','p1-pcls-strategy','p1-pcls-annual-rate','drawdown-order','allowance-uprating','freeze-until'
+  'growth','inflation','cisa-growth','sp-wage-growth','p0-pcls-strategy','p0-pcls-annual-rate','p1-pcls-strategy','p1-pcls-annual-rate','drawdown-order','allowance-uprating','freeze-until',
+  'rls-toggle','rls-london'
 ];
 
 // =============================================
@@ -753,7 +802,7 @@ function collectState() {
   const state = { _version: 1, _savedAt: new Date().toISOString() };
   FIELD_IDS.forEach(id => {
     const el = document.getElementById(id);
-    if (el) state[id] = el.value;
+    if (el) state[id] = el.type === 'checkbox' ? el.checked : el.value;
   });
   // Save editable tab names
   [0, 1].forEach(i => {
@@ -769,7 +818,12 @@ function applyState(state) {
   FIELD_IDS.forEach(id => {
     const el = document.getElementById(id);
     if (el && state[id] !== undefined) {
-      el.value = state[id];
+      if (el.type === 'checkbox') {
+        // Stored as boolean or the string 'true'
+        el.checked = state[id] === true || state[id] === 'true';
+      } else {
+        el.value = state[id];
+      }
       // Keep range display labels in sync
       if (el.type === 'range') {
         const label = document.getElementById(id + 'v');
@@ -778,6 +832,10 @@ function applyState(state) {
       applied++;
     }
   });
+  // Show/hide London toggle based on restored PLSA Standards checkbox state
+  const londonLabel = document.getElementById('rls-london-label');
+  const rlsToggle   = document.getElementById('rls-toggle');
+  if (londonLabel && rlsToggle) londonLabel.style.display = rlsToggle.checked ? 'flex' : 'none';
   // Restore editable tab names
   [0, 1].forEach(i => {
     const key = 'tab-name-' + i;
@@ -1302,6 +1360,10 @@ function solveGrossForNet(targetNet, existingTaxable, thresh) {
 // RENDER
 // =============================================
 let chartInstances = {};
+// Cached last render state — used by rebuildCashflowChart() when RLS toggles change
+let _lastRenderResults = null;
+let _lastRenderInp = null;
+
 function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
 function fmt(n) {
   if (Math.abs(n) >= 1e6) return '£' + (n/1e6).toFixed(2) + 'm';
@@ -1316,7 +1378,21 @@ function getNames() {
   return [n0, n1];
 }
 
+/** Called when the PLSA Standards or London toggles change — rebuilds only the cashflow chart */
+function rebuildCashflowChart() {
+  // Show/hide the London sub-toggle depending on whether the main toggle is on
+  const rlsOn = document.getElementById('rls-toggle').checked;
+  const londonLabel = document.getElementById('rls-london-label');
+  if (londonLabel) londonLabel.style.display = rlsOn ? 'flex' : 'none';
+  // Re-render only if we have data
+  if (_lastRenderResults && _lastRenderInp) renderResults(_lastRenderResults, _lastRenderInp);
+}
+
 function renderResults(results, inp) {
+  // Cache for RLS toggle rebuilds
+  _lastRenderResults = results;
+  _lastRenderInp = inp;
+
   document.getElementById('placeholder').style.display = 'none';
   const panel = document.getElementById('results');
   panel.style.display = 'block';
@@ -1383,6 +1459,10 @@ function renderResults(results, inp) {
       <div class="card-sub">${fmt(pclsAmts.reduce((a,b)=>a+b,0) + ufplsTaxFreeAmts.reduce((a,b)=>a+b,0))} projected + ${fmt((inp.persons[0].pclsAlreadyTaken||0)+(inp.persons[1].pclsAlreadyTaken||0))} already taken</div>
     </div>`;
 
+  // Read RLS toggle state here so it is in scope for both the legend and the requestAnimationFrame chart build
+  const rlsShow   = document.getElementById('rls-toggle') && document.getElementById('rls-toggle').checked;
+  const rlsLondon = document.getElementById('rls-london') && document.getElementById('rls-london').checked;
+
   document.getElementById('cashflow-legend').innerHTML = `
     <div class="legend-item"><div class="legend-dot" style="background:rgba(90,160,130,0.75)"></div>Employment (gross)</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>Pension Drawdown</div>
@@ -1392,7 +1472,11 @@ function renderResults(results, inp) {
     <div class="legend-item"><div class="legend-dot" style="background:var(--sp)"></div>State Pension</div>
     <div class="legend-item"><div class="legend-dot" style="background:rgba(160,210,180,0.75)"></div>UFPLS (tax-free)</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>PCLS</div>
-    <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,80,0.7)"></div>Spending</div>`;
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,80,0.7)"></div>Spending</div>
+    ${rlsShow ? `
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(201,126,126,0.7);border-radius:0"></div>PLSA Minimum</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(232,184,75,0.8);border-radius:0"></div>PLSA Moderate</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(143,176,122,0.8);border-radius:0"></div>PLSA Comfortable</div>` : ''}`;
 
   document.getElementById('assets-legend').innerHTML = `
     <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>${n0} Pension</div>
@@ -1404,8 +1488,62 @@ function renderResults(results, inp) {
 
   requestAnimationFrame(() => {
     destroyChart('cashflow');
+
+    // PLSA Retirement Living Standards overlay
+    // (rlsShow and rlsLondon are declared above, before the legend update, so they are in scope here too)
+    // Use couple values if Person 2 is active, else single values
+    const isCouple = inp.persons[1].active;
+    const rlsKey    = (isCouple ? 'couple'    : 'single')    + (rlsLondon ? 'Lon' : '');
+    const rlsBase   = RLS[rlsKey] || (isCouple ? RLS.couple : RLS.single);
+    // RLS lines are uprated annually with the model's inflation assumption (PLSA updates annually with CPI)
+    const rlsMin    = results.map((_, i) => Math.round(rlsBase.min * Math.pow(1 + inp.inflation, i)));
+    const rlsMod    = results.map((_, i) => Math.round(rlsBase.mod * Math.pow(1 + inp.inflation, i)));
+    const rlsCom    = results.map((_, i) => Math.round(rlsBase.com * Math.pow(1 + inp.inflation, i)));
+
+    // Inline Chart.js plugin: shade the background between the three RLS bands
+    const rlsShadingPlugin = {
+      id: 'rlsShading',
+      beforeDraw(chart) {
+        if (!rlsShow) return;
+        const { ctx, chartArea: { left, right, top, bottom }, scales: { y } } = chart;
+        // Guard: y scale must be ready
+        if (!y || typeof y.getPixelForValue !== 'function') return;
+        const clamp = v => Math.max(top, Math.min(bottom, y.getPixelForValue(v)));
+        const n = chart.data.labels.length;
+        if (n === 0) return;
+        // For simplicity shade using first and last year's RLS values (linear interpolation not needed — lines already plotted)
+        // Use the min/max of the chart x-axis (left→right = first→last data point)
+        // Shade entire chart area in three tiers using the *current midpoint* (year 0) values — the line datasets show the actual trajectory
+        const minVal  = rlsMin[0];
+        const modVal  = rlsMod[0];
+        const comVal  = rlsCom[0];
+        // Below minimum — red tint
+        ctx.save();
+        ctx.fillStyle = 'rgba(201,126,126,0.07)';
+        ctx.fillRect(left, clamp(minVal), right - left, bottom - clamp(minVal));
+        // Minimum → Moderate — amber tint
+        ctx.fillStyle = 'rgba(232,184,75,0.06)';
+        ctx.fillRect(left, clamp(modVal), right - left, clamp(minVal) - clamp(modVal));
+        // Moderate → Comfortable — green tint
+        ctx.fillStyle = 'rgba(143,176,122,0.07)';
+        ctx.fillRect(left, clamp(comVal), right - left, clamp(modVal) - clamp(comVal));
+        // Above comfortable — blue tint
+        ctx.fillStyle = 'rgba(126,184,201,0.05)';
+        ctx.fillRect(left, top, right - left, clamp(comVal) - top);
+        ctx.restore();
+      }
+    };
+
+    // Build extra RLS line datasets when toggle is on
+    const rlsDatasets = rlsShow ? [
+      { label: 'PLSA Minimum', data: rlsMin, type: 'line', borderColor: 'rgba(201,126,126,0.7)', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, stack: undefined, order: -1 },
+      { label: 'PLSA Moderate', data: rlsMod, type: 'line', borderColor: 'rgba(232,184,75,0.8)', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, stack: undefined, order: -1 },
+      { label: 'PLSA Comfortable', data: rlsCom, type: 'line', borderColor: 'rgba(143,176,122,0.8)', borderWidth: 1.5, borderDash: [3,3], pointRadius: 0, fill: false, stack: undefined, order: -1 },
+    ] : [];
+
     chartInstances['cashflow'] = new Chart(document.getElementById('cashflow-chart'), {
       type: 'bar',
+      plugins: [rlsShadingPlugin],
       data: {
         labels: years,
         datasets: [
@@ -1418,6 +1556,8 @@ function renderResults(results, inp) {
           { label: 'UFPLS (tax-free)', data: ufplsTaxFreeAmts, backgroundColor: 'rgba(160,210,180,0.75)', stack: 'income' },
           { label: 'PCLS', data: pclsAmts, backgroundColor: 'rgba(126,184,201,0.75)', stack: 'income' },
           { label: 'Spending Target', data: spending, type: 'line', borderColor: 'rgba(224,120,80,0.9)', borderWidth: 2, pointRadius: 0, borderDash: [4,3], fill: false, stack: undefined },
+          // PLSA Retirement Living Standards lines — appended when toggle is enabled
+          ...rlsDatasets,
         ]
       },
       options: {
@@ -1425,7 +1565,19 @@ function renderResults(results, inp) {
         plugins: { legend: { display: false }, tooltip: {
           callbacks: {
             title: items => `${years[items[0].dataIndex]}  ·  ${n0} age ${agesP1[items[0].dataIndex]}  ·  ${n1} age ${agesP2[items[0].dataIndex]}`,
-            label: item => item.parsed.y === 0 ? null : ` ${item.dataset.label}: ${fmt(item.parsed.y)}`
+            label: item => item.parsed.y === 0 ? null : ` ${item.dataset.label}: ${fmt(item.parsed.y)}`,
+            // When RLS overlay is active, show which PLSA band the spending falls in
+            afterBody: items => {
+              if (!rlsShow) return [];
+              const i = items[0].dataIndex;
+              const sp = spending[i];
+              let band;
+              if (sp >= rlsCom[i])      band = '✦ Above Comfortable';
+              else if (sp >= rlsMod[i]) band = '◆ Moderate – Comfortable';
+              else if (sp >= rlsMin[i]) band = '◇ Minimum – Moderate';
+              else                      band = '△ Below Minimum';
+              return [`PLSA band: ${band}`];
+            }
           }
         }},
         scales: {
