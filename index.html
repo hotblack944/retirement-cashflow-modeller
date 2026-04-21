@@ -498,6 +498,13 @@
           <span class="range-val" id="cisa-growthv">4%</span>
         </div>
       </div>
+      <!-- Triple lock: earnings growth leg -->
+      <div class="field-sub" style="grid-column: 1 / -1;"><span class="tip-wrap">Wage Growth % (Triple Lock)<i class="tip-icon">?</i><span class="tip-bubble">Average earnings growth used for the State Pension triple lock. Each year the State Pension rises by the highest of: this earnings figure, CPI inflation, or 2.5%. The 2.5% floor is fixed by the triple lock guarantee.</span></span>
+        <div class="range-row">
+          <input type="range" id="sp-wage-growth" min="0" max="10" step="0.25" value="3.5" oninput="document.getElementById('sp-wage-growthv').textContent=this.value+'%'">
+          <span class="range-val" id="sp-wage-growthv">3.5%</span>
+        </div>
+      </div>
     </div>
     <div class="assumptions-grid">
       <div class="field-sub"><span class="tip-wrap">Drawdown Order<i class="tip-icon">?</i><span class="tip-bubble">Which pot to draw from first. Tax-Optimal fills each person's personal allowance from pension (tax-free), then uses ISA — typically the most efficient. Pension-First depletes pensions before ISAs; ISA-First preserves the pension. Cash ISA is always drawn alongside S&amp;S ISA in the same proportions.</span></span>
@@ -673,7 +680,7 @@ const FIELD_IDS = [
   'p1-cisa','p1-cisacontrib',
   'p1-salary','p1-salarygrowth','p1-sacrifice','p1-empcontribpct','p1-empcontribvia','p1-employer',
   'spending','endage','spend-reduction-pct','spend-reduction-every','spend-reduction-age',
-  'growth','inflation','cisa-growth','p0-pcls-strategy','p0-pcls-annual-rate','p1-pcls-strategy','p1-pcls-annual-rate','drawdown-order','allowance-uprating','freeze-until'
+  'growth','inflation','cisa-growth','sp-wage-growth','p0-pcls-strategy','p0-pcls-annual-rate','p1-pcls-strategy','p1-pcls-annual-rate','drawdown-order','allowance-uprating','freeze-until'
 ];
 
 // =============================================
@@ -731,6 +738,7 @@ function getInputs() {
     spendReductionAge: g('spend-reduction-age'),
     growth: g('growth') / 100, inflation: g('inflation') / 100,
     cisaGrowth: g('cisa-growth') / 100,
+    spWageGrowth: g('sp-wage-growth') / 100,
     drawdownOrder: s('drawdown-order'),
     allowanceUprating: s('allowance-uprating'), freezeUntil: g('freeze-until'),
   };
@@ -969,7 +977,10 @@ function runModel() {
         yearData.income[pi] += dbAmt;
       }
       if (ages[pi] >= p[pi].spAge && p[pi].sp > 0) {
-        const spAmt = p[pi].sp * inflFactor;
+        // Triple lock: SP rises each year by the highest of inflation, earnings growth, or 2.5%
+        const tripleLockRate = Math.max(inp.inflation, inp.spWageGrowth, TAX.statePensionTriplelock);
+        const spFactor = Math.pow(1 + tripleLockRate, y);
+        const spAmt = p[pi].sp * spFactor;
         yearData.spIncome[pi] = spAmt;
         yearData.income[pi] += spAmt;
       }
