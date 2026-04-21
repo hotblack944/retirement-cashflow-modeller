@@ -51,6 +51,7 @@
     --p1: #c8a96e;
     --p2: #7eb8c9;
     --isa: #8fb07a;
+    --cisa: #e8b84b;
     --db: #b07ad9;
     --sp: #c97e7e;
     --tax: #e07850;
@@ -330,11 +331,18 @@
           <div class="field-sub"><span>State Pension Age</span><input type="number" id="p0-spage" value="67" min="60" max="70"></div>
         </div>
       </div>
-      <div class="section-header">ISA</div>
+      <div class="section-header">Stocks &amp; Shares ISA</div>
       <div class="field-group">
         <div class="field-row">
-          <div class="field-sub"><span class="tip-wrap">ISA Balance (£)<i class="tip-icon">?</i><span class="tip-bubble">Individual Savings Account — your current total ISA balance. Withdrawals are completely tax-free with no limit.</span></span><input type="number" id="p0-isa" value="120000" step="1000"></div>
-          <div class="field-sub"><span class="tip-wrap">Annual ISA Add (£)<i class="tip-icon">?</i><span class="tip-bubble">ISA — Individual Savings Account. Amount added each year before retirement, growing tax-free. Maximum £20,000 per person per year.</span></span><input type="number" id="p0-isacontrib" value="0" step="500"></div>
+          <div class="field-sub"><span class="tip-wrap">S&amp;S ISA Balance (£)<i class="tip-icon">?</i><span class="tip-bubble">Stocks &amp; Shares ISA — your current balance. Grows at the investment growth rate. Withdrawals are completely tax-free.</span></span><input type="number" id="p0-isa" value="120000" step="1000"></div>
+          <div class="field-sub"><span class="tip-wrap">Annual S&amp;S ISA Add (£)<i class="tip-icon">?</i><span class="tip-bubble">Amount added to your Stocks &amp; Shares ISA each year before retirement, growing at the investment growth rate. Combined S&amp;S and Cash ISA contributions cannot exceed £20,000 per person per year.</span></span><input type="number" id="p0-isacontrib" value="0" step="500"></div>
+        </div>
+      </div>
+      <div class="section-header">Cash ISA</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span class="tip-wrap">Cash ISA Balance (£)<i class="tip-icon">?</i><span class="tip-bubble">Cash ISA — your current balance. Grows at the Cash ISA interest rate set in Shared Assumptions. Withdrawals are completely tax-free with no limit.</span></span><input type="number" id="p0-cisa" value="0" step="1000"></div>
+          <div class="field-sub"><span class="tip-wrap">Annual Cash ISA Add (£)<i class="tip-icon">?</i><span class="tip-bubble">Amount added to your Cash ISA each year before retirement, earning the Cash ISA interest rate. Combined S&amp;S and Cash ISA contributions cannot exceed £20,000 per person per year.</span></span><input type="number" id="p0-cisacontrib" value="0" step="500"></div>
         </div>
       </div>
     </div>
@@ -425,11 +433,18 @@
           <div class="field-sub"><span>State Pension Age</span><input type="number" id="p1-spage" value="67" min="60" max="70"></div>
         </div>
       </div>
-      <div class="section-header">ISA</div>
+      <div class="section-header">Stocks &amp; Shares ISA</div>
       <div class="field-group">
         <div class="field-row">
-          <div class="field-sub"><span class="tip-wrap">ISA Balance (£)<i class="tip-icon">?</i><span class="tip-bubble">Individual Savings Account — your current total ISA balance. Withdrawals are completely tax-free with no limit.</span></span><input type="number" id="p1-isa" value="60000" step="1000"></div>
-          <div class="field-sub"><span class="tip-wrap">Annual ISA Add (£)<i class="tip-icon">?</i><span class="tip-bubble">ISA — Individual Savings Account. Amount added each year before retirement, growing tax-free. Maximum £20,000 per person per year.</span></span><input type="number" id="p1-isacontrib" value="0" step="500"></div>
+          <div class="field-sub"><span class="tip-wrap">S&amp;S ISA Balance (£)<i class="tip-icon">?</i><span class="tip-bubble">Stocks &amp; Shares ISA — your current balance. Grows at the investment growth rate. Withdrawals are completely tax-free.</span></span><input type="number" id="p1-isa" value="60000" step="1000"></div>
+          <div class="field-sub"><span class="tip-wrap">Annual S&amp;S ISA Add (£)<i class="tip-icon">?</i><span class="tip-bubble">Amount added to your Stocks &amp; Shares ISA each year before retirement, growing at the investment growth rate. Combined S&amp;S and Cash ISA contributions cannot exceed £20,000 per person per year.</span></span><input type="number" id="p1-isacontrib" value="0" step="500"></div>
+        </div>
+      </div>
+      <div class="section-header">Cash ISA</div>
+      <div class="field-group">
+        <div class="field-row">
+          <div class="field-sub"><span class="tip-wrap">Cash ISA Balance (£)<i class="tip-icon">?</i><span class="tip-bubble">Cash ISA — your current balance. Grows at the Cash ISA interest rate set in Shared Assumptions. Withdrawals are completely tax-free with no limit.</span></span><input type="number" id="p1-cisa" value="0" step="1000"></div>
+          <div class="field-sub"><span class="tip-wrap">Annual Cash ISA Add (£)<i class="tip-icon">?</i><span class="tip-bubble">Amount added to your Cash ISA each year before retirement, earning the Cash ISA interest rate. Combined S&amp;S and Cash ISA contributions cannot exceed £20,000 per person per year.</span></span><input type="number" id="p1-cisacontrib" value="0" step="500"></div>
         </div>
       </div>
     </div>
@@ -440,7 +455,7 @@
       <span class="shared-divider-line"></span>
       <span class="shared-divider-sub">applies to both people</span>
     </div>
-    <div class="section-header">Spending & Goals</div>
+    <div class="section-header">Spending &amp; Goals</div>
     <div class="field-group">
       <div class="field-row">
         <div class="field-sub"><span>Annual Spending (£)</span><input type="number" id="spending" value="42000" step="500"></div>
@@ -464,7 +479,7 @@
 
     <div class="section-header">Assumptions</div>
     <div class="assumptions-grid">
-      <div class="field-sub"><span class="tip-wrap">Investment Growth %<i class="tip-icon">?</i><span class="tip-bubble">Nominal annual return assumed on pension pots and ISAs. A balanced portfolio might target 5–7%. This is before inflation — real returns will be lower.</span></span>
+      <div class="field-sub"><span class="tip-wrap">Investment Growth %<i class="tip-icon">?</i><span class="tip-bubble">Nominal annual return assumed on pension pots and Stocks &amp; Shares ISAs. A balanced portfolio might target 5–7%. This is before inflation — real returns will be lower.</span></span>
         <div class="range-row">
           <input type="range" id="growth" min="0" max="10" step="0.5" value="5" oninput="document.getElementById('growthv').textContent=this.value+'%'">
           <span class="range-val" id="growthv">5%</span>
@@ -476,9 +491,23 @@
           <span class="range-val" id="inflationv">2.5%</span>
         </div>
       </div>
+      <!-- NEW: Cash ISA growth rate -->
+      <div class="field-sub" style="grid-column: 1 / -1;"><span class="tip-wrap">Cash ISA Interest Rate %<i class="tip-icon">?</i><span class="tip-bubble">Annual interest rate applied to both persons' Cash ISA balances. This is typically lower than investment growth — current best-buy rates are around 4–5%. Applied to pre-retirement contributions and in-retirement balances alike.</span></span>
+        <div class="range-row">
+          <input type="range" id="cisa-growth" min="0" max="10" step="0.25" value="4" oninput="document.getElementById('cisa-growthv').textContent=this.value+'%'">
+          <span class="range-val" id="cisa-growthv">4%</span>
+        </div>
+      </div>
+      <!-- Triple lock: earnings growth leg -->
+      <div class="field-sub" style="grid-column: 1 / -1;"><span class="tip-wrap">Wage Growth % (Triple Lock)<i class="tip-icon">?</i><span class="tip-bubble">Average earnings growth used for the State Pension triple lock. Each year the State Pension rises by the highest of: this earnings figure, CPI inflation, or 2.5%. The 2.5% floor is fixed by the triple lock guarantee.</span></span>
+        <div class="range-row">
+          <input type="range" id="sp-wage-growth" min="0" max="10" step="0.25" value="3.5" oninput="document.getElementById('sp-wage-growthv').textContent=this.value+'%'">
+          <span class="range-val" id="sp-wage-growthv">3.5%</span>
+        </div>
+      </div>
     </div>
     <div class="assumptions-grid">
-      <div class="field-sub"><span class="tip-wrap">Drawdown Order<i class="tip-icon">?</i><span class="tip-bubble">Which pot to draw from first. Tax-Optimal fills each person's personal allowance from pension (tax-free), then uses ISA — typically the most efficient. Pension-First depletes pensions before ISAs; ISA-First preserves the pension.</span></span>
+      <div class="field-sub"><span class="tip-wrap">Drawdown Order<i class="tip-icon">?</i><span class="tip-bubble">Which pot to draw from first. Tax-Optimal fills each person's personal allowance from pension (tax-free), then uses ISA — typically the most efficient. Pension-First depletes pensions before ISAs; ISA-First preserves the pension. Cash ISA is always drawn alongside S&amp;S ISA in the same proportions.</span></span>
         <select id="drawdown-order">
           <option value="pension-first">Pension First</option>
           <option value="isa-first">ISA First</option>
@@ -527,7 +556,7 @@
         </div>
       </div>
       <div class="chart-full">
-        <div class="chart-title">Asset Balances Over Time <span>Pension pots and ISAs</span></div>
+        <div class="chart-title">Asset Balances Over Time <span>Pension pots, S&amp;S ISAs and Cash ISAs</span></div>
         <canvas id="assets-chart" height="150"></canvas>
         <div class="legend" style="margin-top:12px" id="assets-legend"></div>
       </div>
@@ -548,8 +577,8 @@
           <thead>
             <tr>
               <th>Year</th><th id='th-ages'>Ages</th><th>Salary (gross)</th><th>Sacrifice</th>
-              <th>Ee Contrib</th><th>Er Contrib</th><th>Pension Draw</th><th>ISA Draw</th>
-              <th>DB+SP</th><th>PCLS</th><th>Tax+NI</th><th>Net Income</th>
+              <th>Ee Contrib</th><th>Er Contrib</th><th>Pension Draw</th><th>S&amp;S ISA Draw</th>
+              <th>Cash ISA Draw</th><th>DB+SP</th><th>PCLS</th><th>Tax+NI</th><th>Net Income</th>
               <th>Spending</th><th>Shortfall</th><th>Total Assets</th>
             </tr>
           </thead>
@@ -645,11 +674,13 @@ function switchPerson(n) {
 // =============================================
 const FIELD_IDS = [
   'p0-age','p0-retage','p0-dc','p0-dccrystallised','p0-pclstaken','p0-pcls-strategy','p0-pcls-annual-rate','p0-dccontrib','p0-db','p0-dbage','p0-dbreduced','p0-dbreducedage','p0-sp','p0-spage','p0-isa','p0-isacontrib',
+  'p0-cisa','p0-cisacontrib',
   'p0-salary','p0-salarygrowth','p0-sacrifice','p0-empcontribpct','p0-empcontribvia','p0-employer',
   'p1-age','p1-retage','p1-dc','p1-dccrystallised','p1-pclstaken','p1-pcls-strategy','p1-pcls-annual-rate','p1-dccontrib','p1-db','p1-dbage','p1-dbreduced','p1-dbreducedage','p1-sp','p1-spage','p1-isa','p1-isacontrib',
+  'p1-cisa','p1-cisacontrib',
   'p1-salary','p1-salarygrowth','p1-sacrifice','p1-empcontribpct','p1-empcontribvia','p1-employer',
   'spending','endage','spend-reduction-pct','spend-reduction-every','spend-reduction-age',
-  'growth','inflation','p0-pcls-strategy','p0-pcls-annual-rate','p1-pcls-strategy','p1-pcls-annual-rate','drawdown-order','allowance-uprating','freeze-until'
+  'growth','inflation','cisa-growth','sp-wage-growth','p0-pcls-strategy','p0-pcls-annual-rate','p1-pcls-strategy','p1-pcls-annual-rate','drawdown-order','allowance-uprating','freeze-until'
 ];
 
 // =============================================
@@ -679,6 +710,7 @@ function getInputs() {
         dbReduced: p1active ? g('p0-dbreduced') : 0, dbReducedAge: p1active ? (g('p0-dbreducedage') || 999) : 999,
         sp: p1active ? g('p0-sp') * 52 : 0, spAge: p1active ? (g('p0-spage') || 999) : 999,
         isa: p1active ? g('p0-isa') : 0, isaContrib: p1active ? g('p0-isacontrib') : 0,
+        cisa: p1active ? g('p0-cisa') : 0, cisaContrib: p1active ? g('p0-cisacontrib') : 0,
         salary: p1active ? g('p0-salary') : 0, salaryGrowth: p1active ? g('p0-salarygrowth') / 100 : 0,
         sacrifice: p1active ? g('p0-sacrifice') : 0, employerPct: p1active ? g('p0-employer') / 100 : 0,
         empContribPct: p1active ? g('p0-empcontribpct') / 100 : 0, empContribVia: p1active ? s('p0-empcontribvia') : 'posttax',
@@ -694,6 +726,7 @@ function getInputs() {
         dbReduced: p2active ? g('p1-dbreduced') : 0, dbReducedAge: p2active ? (g('p1-dbreducedage') || 999) : 999,
         sp: p2active ? g('p1-sp') * 52 : 0, spAge: p2active ? (g('p1-spage') || 999) : 999,
         isa: p2active ? g('p1-isa') : 0, isaContrib: p2active ? g('p1-isacontrib') : 0,
+        cisa: p2active ? g('p1-cisa') : 0, cisaContrib: p2active ? g('p1-cisacontrib') : 0,
         salary: p2active ? g('p1-salary') : 0, salaryGrowth: p2active ? g('p1-salarygrowth') / 100 : 0,
         sacrifice: p2active ? g('p1-sacrifice') : 0, employerPct: p2active ? g('p1-employer') / 100 : 0,
         empContribPct: p2active ? g('p1-empcontribpct') / 100 : 0, empContribVia: p2active ? s('p1-empcontribvia') : 'posttax',
@@ -704,6 +737,8 @@ function getInputs() {
     spendReductionEvery: Math.max(1, g('spend-reduction-every')),
     spendReductionAge: g('spend-reduction-age'),
     growth: g('growth') / 100, inflation: g('inflation') / 100,
+    cisaGrowth: g('cisa-growth') / 100,
+    spWageGrowth: g('sp-wage-growth') / 100,
     drawdownOrder: s('drawdown-order'),
     allowanceUprating: s('allowance-uprating'), freezeUntil: g('freeze-until'),
   };
@@ -777,7 +812,7 @@ function exportToFile() {
 
 /** Trigger file picker to import a scenario */
 function importFromFile() {
-  document.getElementById('file-input').value = '';  // reset so same file can be reloaded
+  document.getElementById('file-input').value = '';
   document.getElementById('file-input').click();
 }
 
@@ -872,6 +907,9 @@ function runModel() {
   let dc = [p[0].dc, p[1].dc];   // starts as full pot; ISA-paced moves it to udc at retirement
   let udc = [0, 0];               // uncrystallised — populated at ISA-paced retirement trigger
   let isa = [p[0].isa, p[1].isa];
+  // Cash ISA balances tracked separately, grow at cisaGrowth rate
+  let cisa = [p[0].cisa, p[1].cisa];
+
   let pclsTaken = [
     (p[0].pclsAlreadyTaken || 0) >= 268275,
     (p[1].pclsAlreadyTaken || 0) >= 268275,
@@ -898,8 +936,8 @@ function runModel() {
 
     let yearData = {
       year: yr, ages, income: [0,0], dbIncome: [0,0], spIncome: [0,0],
-      pensionDrawdown: [0,0], pcls: [0,0], isaWithdrawal: [0,0], tax: [0,0],
-      netIncome: 0, shortfall: 0, dc: [...dc], isa: [...isa], totalAssets: 0,
+      pensionDrawdown: [0,0], pcls: [0,0], isaWithdrawal: [0,0], cisaWithdrawal: [0,0], tax: [0,0],
+      netIncome: 0, shortfall: 0, dc: [...dc], isa: [...isa], cisa: [...cisa], totalAssets: 0,
       employmentIncome: 0, employmentNet: 0, employmentTax: 0, sacrifice: 0,
     };
 
@@ -927,6 +965,8 @@ function runModel() {
         yearData.emplrContrib = (yearData.emplrContrib || 0) + employer;
         dc[pi] = dc[pi] * (1 + inp.growth) + sacrifice + empContrib + employer + p[pi].dcContrib;
         isa[pi] = isa[pi] * (1 + inp.growth) + p[pi].isaContrib;
+        // Cash ISA grows at cisaGrowth rate during pre-retirement
+        cisa[pi] = cisa[pi] * (1 + inp.cisaGrowth) + p[pi].cisaContrib;
         continue;
       }
       if (ages[pi] >= p[pi].dbAge && p[pi].db > 0) {
@@ -937,7 +977,10 @@ function runModel() {
         yearData.income[pi] += dbAmt;
       }
       if (ages[pi] >= p[pi].spAge && p[pi].sp > 0) {
-        const spAmt = p[pi].sp * inflFactor;
+        // Triple lock: SP rises each year by the highest of inflation, earnings growth, or 2.5%
+        const tripleLockRate = Math.max(inp.inflation, inp.spWageGrowth, TAX.statePensionTriplelock);
+        const spFactor = Math.pow(1 + tripleLockRate, y);
+        const spAmt = p[pi].sp * spFactor;
         yearData.spIncome[pi] = spAmt;
         yearData.income[pi] += spAmt;
       }
@@ -1054,17 +1097,35 @@ function runModel() {
     // For drawdown share calculations, pension pot = crystallised dc + uncrystallised udc combined
     const totalDC = (dc[0] + udc[0]) + (dc[1] + udc[1]);
     const totalISA = isa[0] + isa[1];
+    const totalCISA = cisa[0] + cisa[1];
+    // Combined ISA pool (S&S + Cash) for share calculations
+    const totalAllISA = totalISA + totalCISA;
     const totalPension = [dc[0] + udc[0], dc[1] + udc[1]];
     const dcShare = [totalDC > 0 ? totalPension[0]/totalDC : 0.5, totalDC > 0 ? totalPension[1]/totalDC : 0.5];
-    const isaShare = [totalISA > 0 ? isa[0]/totalISA : 0.5, totalISA > 0 ? isa[1]/totalISA : 0.5];
+    // ISA share per person across both ISA types combined
+    const isaShare = [totalAllISA > 0 ? (isa[0]+cisa[0])/totalAllISA : 0.5, totalAllISA > 0 ? (isa[1]+cisa[1])/totalAllISA : 0.5];
 
+    // Helper: draw from both ISA types for a given person, proportionally by balance
+    // Cash ISA drawn first as it earns less, so depleting it first is generally rational;
+    // but we simply draw proportionally to avoid distorting the asset mix.
     const drawISA = (pi, netWanted) => {
       if (ages[pi] < p[pi].retAge) return 0;
-      const amt = Math.min(isa[pi], netWanted);
-      yearData.isaWithdrawal[pi] += amt;
-      isa[pi] -= amt;
-      return amt;
+      const totalPiISA = isa[pi] + cisa[pi];
+      if (totalPiISA <= 0) return 0;
+      const amt = Math.min(totalPiISA, netWanted);
+      // Split withdrawal proportionally between S&S ISA and Cash ISA
+      const ssShare = totalPiISA > 0 ? isa[pi] / totalPiISA : 0;
+      const cisaSharePi = 1 - ssShare;
+      const ssAmt = Math.min(isa[pi], amt * ssShare);
+      const cisaAmt = Math.min(cisa[pi], amt * cisaSharePi);
+      const actualAmt = ssAmt + cisaAmt;
+      yearData.isaWithdrawal[pi] += ssAmt;
+      yearData.cisaWithdrawal[pi] += cisaAmt;
+      isa[pi] -= ssAmt;
+      cisa[pi] -= cisaAmt;
+      return actualAmt;
     };
+
     const drawPension = (pi, netWanted) => {
       if (ages[pi] < p[pi].retAge || netWanted <= 0) return 0;
       if (dc[pi] <= 0 && udc[pi] <= 0) return 0;
@@ -1198,7 +1259,8 @@ function runModel() {
     const totalTax = yearData.tax[0] + yearData.tax[1];
     const grossTaxable = yearData.income[0] + yearData.income[1];
     const isaTotal = yearData.isaWithdrawal[0] + yearData.isaWithdrawal[1];
-    yearData.netIncome = (grossTaxable - totalTax) + isaTotal + yearData.employmentNet + (yearData.ufplsTaxFree || 0);
+    const cisaTotal = yearData.cisaWithdrawal[0] + yearData.cisaWithdrawal[1];
+    yearData.netIncome = (grossTaxable - totalTax) + isaTotal + cisaTotal + yearData.employmentNet + (yearData.ufplsTaxFree || 0);
     yearData.totalTaxAll = totalTax + yearData.employmentTax;
     yearData.shortfall = Math.max(0, realSpend - yearData.netIncome);
 
@@ -1207,13 +1269,16 @@ function runModel() {
         dc[pi]  = Math.max(0, dc[pi])  * (1 + inp.growth);
         udc[pi] = Math.max(0, udc[pi]) * (1 + inp.growth);
         isa[pi] = Math.max(0, isa[pi]) * (1 + inp.growth);
+        // Cash ISA grows at its own rate in retirement too
+        cisa[pi] = Math.max(0, cisa[pi]) * (1 + inp.cisaGrowth);
       }
     }
 
     yearData.dc = [...dc];
     yearData.udc = [...udc];
     yearData.isa = [...isa];
-    yearData.totalAssets = dc[0] + dc[1] + udc[0] + udc[1] + isa[0] + isa[1];
+    yearData.cisa = [...cisa];
+    yearData.totalAssets = dc[0] + dc[1] + udc[0] + udc[1] + isa[0] + isa[1] + cisa[0] + cisa[1];
     yearData.totalTax = totalTax;
     yearData.realSpend = realSpend;
     results.push(yearData);
@@ -1265,9 +1330,12 @@ function renderResults(results, inp) {
   const dc1 = results.map(r => (r.dc[1] || 0) + (r.udc ? r.udc[1] || 0 : 0));
   const isa0 = results.map(r => r.isa[0]);
   const isa1 = results.map(r => r.isa[1]);
+  const cisa0 = results.map(r => r.cisa ? r.cisa[0] : 0);
+  const cisa1 = results.map(r => r.cisa ? r.cisa[1] : 0);
   const pensionDraw = results.map(r => r.pensionDrawdown[0] + r.pensionDrawdown[1]);
   const ufplsTaxFreeAmts = results.map(r => r.ufplsTaxFree || 0);
   const isaWithdraw = results.map(r => r.isaWithdrawal[0] + r.isaWithdrawal[1]);
+  const cisaWithdraw = results.map(r => r.cisaWithdrawal[0] + r.cisaWithdrawal[1]);
   const pclsAmts = results.map(r => r.pcls[0] + r.pcls[1]);
   const dbIncome = results.map(r => r.dbIncome[0] + r.dbIncome[1]);
   const spIncome = results.map(r => r.spIncome[0] + r.spIncome[1]);
@@ -1285,11 +1353,14 @@ function renderResults(results, inp) {
   const shortfallYears = shortfall.filter(s=>s>100).length;
   const totalPCLSAllYears = pclsAmts.reduce((a,b)=>a+b,0) + ufplsTaxFreeAmts.reduce((a,b)=>a+b,0) + (inp.persons[0].pclsAlreadyTaken || 0) + (inp.persons[1].pclsAlreadyTaken || 0);
 
+  // Include Cash ISA in total starting assets
+  const startingAssets = inp.persons[0].dc + inp.persons[1].dc + inp.persons[0].isa + inp.persons[1].isa + inp.persons[0].cisa + inp.persons[1].cisa;
+
   document.getElementById('summary-cards-container').innerHTML = `
     <div class="card accent">
       <div class="card-label">Total Assets Now</div>
-      <div class="card-value">${fmt(inp.persons[0].dc + inp.persons[1].dc + inp.persons[0].isa + inp.persons[1].isa)}</div>
-      <div class="card-sub">Pension + ISA combined</div>
+      <div class="card-value">${fmt(startingAssets)}</div>
+      <div class="card-sub">Pension + S&amp;S ISA + Cash ISA</div>
     </div>
     <div class="card ${fundDepletionIdx === -1 ? 'good' : 'warn'}">
       <div class="card-label">Fund Depletion</div>
@@ -1315,17 +1386,21 @@ function renderResults(results, inp) {
   document.getElementById('cashflow-legend').innerHTML = `
     <div class="legend-item"><div class="legend-dot" style="background:rgba(90,160,130,0.75)"></div>Employment (gross)</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>Pension Drawdown</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>ISA Withdrawal</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>S&amp;S ISA Withdrawal</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cisa)"></div>Cash ISA Withdrawal</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>DB Pension</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--sp)"></div>State Pension</div>
     <div class="legend-item"><div class="legend-dot" style="background:rgba(160,210,180,0.75)"></div>UFPLS (tax-free)</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>PCLS</div>
     <div class="legend-item"><div class="legend-dot" style="background:rgba(224,120,80,0.7)"></div>Spending</div>`;
+
   document.getElementById('assets-legend').innerHTML = `
     <div class="legend-item"><div class="legend-dot" style="background:var(--p1)"></div>${n0} Pension</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>${n1} Pension</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>${n0} ISA</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>${n1} ISA</div>`;
+    <div class="legend-item"><div class="legend-dot" style="background:var(--isa)"></div>${n0} S&amp;S ISA</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--db)"></div>${n1} S&amp;S ISA</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--cisa)"></div>${n0} Cash ISA</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(232,184,75,0.5)"></div>${n1} Cash ISA</div>`;
 
   requestAnimationFrame(() => {
     destroyChart('cashflow');
@@ -1336,7 +1411,8 @@ function renderResults(results, inp) {
         datasets: [
           { label: 'Employment (gross)', data: employmentGrossArr, backgroundColor: 'rgba(90,160,130,0.75)', stack: 'income' },
           { label: 'Pension Drawdown', data: pensionDraw, backgroundColor: 'rgba(200,169,110,0.75)', stack: 'income' },
-          { label: 'ISA Withdrawal', data: isaWithdraw, backgroundColor: 'rgba(143,176,122,0.75)', stack: 'income' },
+          { label: 'S&S ISA Withdrawal', data: isaWithdraw, backgroundColor: 'rgba(143,176,122,0.75)', stack: 'income' },
+          { label: 'Cash ISA Withdrawal', data: cisaWithdraw, backgroundColor: 'rgba(232,184,75,0.75)', stack: 'income' },
           { label: 'DB Pension', data: dbIncome, backgroundColor: 'rgba(176,122,217,0.75)', stack: 'income' },
           { label: 'State Pension', data: spIncome, backgroundColor: 'rgba(201,126,126,0.75)', stack: 'income' },
           { label: 'UFPLS (tax-free)', data: ufplsTaxFreeAmts, backgroundColor: 'rgba(160,210,180,0.75)', stack: 'income' },
@@ -1367,8 +1443,10 @@ function renderResults(results, inp) {
         datasets: [
           { label: `${n0} Pension`, data: dc0, borderColor: 'rgba(200,169,110,0.9)', backgroundColor: 'rgba(200,169,110,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
           { label: `${n1} Pension`, data: dc1, borderColor: 'rgba(126,184,201,0.9)', backgroundColor: 'rgba(126,184,201,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
-          { label: `${n0} ISA`, data: isa0, borderColor: 'rgba(143,176,122,0.9)', backgroundColor: 'rgba(143,176,122,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
-          { label: `${n1} ISA`, data: isa1, borderColor: 'rgba(176,122,217,0.9)', backgroundColor: 'rgba(176,122,217,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+          { label: `${n0} S&S ISA`, data: isa0, borderColor: 'rgba(143,176,122,0.9)', backgroundColor: 'rgba(143,176,122,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+          { label: `${n1} S&S ISA`, data: isa1, borderColor: 'rgba(176,122,217,0.9)', backgroundColor: 'rgba(176,122,217,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+          { label: `${n0} Cash ISA`, data: cisa0, borderColor: 'rgba(232,184,75,0.9)', backgroundColor: 'rgba(232,184,75,0.08)', borderWidth: 2, pointRadius: 0, fill: true },
+          { label: `${n1} Cash ISA`, data: cisa1, borderColor: 'rgba(232,184,75,0.5)', backgroundColor: 'rgba(232,184,75,0.04)', borderWidth: 2, pointRadius: 0, borderDash: [4,3], fill: true },
         ]
       },
       options: {
@@ -1380,7 +1458,10 @@ function renderResults(results, inp) {
           callbacks: {
             title: items => `${years[items[0].dataIndex]}  ·  ${n0} age ${agesP1[items[0].dataIndex]}  ·  ${n1} age ${agesP2[items[0].dataIndex]}`,
             label: item => item.parsed.y > 0 ? ` ${item.dataset.label}: ${fmt(item.parsed.y)}` : null,
-            footer: items => { const i = items[0].dataIndex; return `Total: ${fmt((dc0[i]||0)+(dc1[i]||0)+(isa0[i]||0)+(isa1[i]||0))}`; },
+            footer: items => {
+              const i = items[0].dataIndex;
+              return `Total: ${fmt((dc0[i]||0)+(dc1[i]||0)+(isa0[i]||0)+(isa1[i]||0)+(cisa0[i]||0)+(cisa1[i]||0))}`;
+            },
             labelColor: item => ({ borderColor: item.dataset.borderColor, backgroundColor: item.dataset.borderColor, borderWidth: 0, borderRadius: 2 }),
           }
         }},
@@ -1410,25 +1491,26 @@ function renderResults(results, inp) {
     // Build donut for a given result row — called on initial render and on cashflow bar click
     function updateDonut(r) {
       const isaAmt  = r.isaWithdrawal[0] + r.isaWithdrawal[1];
+      const cisaAmt = r.cisaWithdrawal[0] + r.cisaWithdrawal[1];
       const pclsAmt = r.pcls[0] + r.pcls[1];
       const ufplsTF = r.ufplsTaxFree || 0;
       const taxAmt  = r.totalTaxAll || r.totalTax;
-      const netTaxable = Math.max(0, r.netIncome - isaAmt - ufplsTF);
+      const netTaxable = Math.max(0, r.netIncome - isaAmt - cisaAmt - ufplsTF);
       // Update title to show year
       const [dn0, dn1] = getNames();
       document.getElementById('donut-year-label').textContent = r.year + '  ·  ' + dn0 + ' age ' + r.ages[0] + (r.ages[1] !== r.ages[0] ? '  ·  ' + dn1 + ' age ' + r.ages[1] : '');
       if (chartInstances['tax-donut']) {
-        chartInstances['tax-donut'].data.datasets[0].data = [netTaxable, taxAmt, isaAmt, pclsAmt, ufplsTF];
+        chartInstances['tax-donut'].data.datasets[0].data = [netTaxable, taxAmt, isaAmt, cisaAmt, pclsAmt, ufplsTF];
         chartInstances['tax-donut'].update();
       } else {
         destroyChart('tax-donut');
         chartInstances['tax-donut'] = new Chart(document.getElementById('tax-donut'), {
           type: 'doughnut',
           data: {
-            labels: ['Net Income', 'Tax & NI', 'ISA (tax-free)', 'PCLS (tax-free)', 'UFPLS (tax-free)'],
+            labels: ['Net Income', 'Tax & NI', 'S&S ISA (tax-free)', 'Cash ISA (tax-free)', 'PCLS (tax-free)', 'UFPLS (tax-free)'],
             datasets: [{
-              data: [netTaxable, taxAmt, isaAmt, pclsAmt, ufplsTF],
-              backgroundColor: ['rgba(200,169,110,0.8)','rgba(224,120,80,0.8)','rgba(143,176,122,0.8)','rgba(126,184,201,0.8)','rgba(160,210,180,0.8)'],
+              data: [netTaxable, taxAmt, isaAmt, cisaAmt, pclsAmt, ufplsTF],
+              backgroundColor: ['rgba(200,169,110,0.8)','rgba(224,120,80,0.8)','rgba(143,176,122,0.8)','rgba(232,184,75,0.8)','rgba(126,184,201,0.8)','rgba(160,210,180,0.8)'],
               borderWidth: 0,
             }]
           },
@@ -1458,6 +1540,7 @@ function renderResults(results, inp) {
       <td>${r.emplrContrib > 0 ? fmtFull(r.emplrContrib) : '—'}</td>
       <td>${fmtFull(r.pensionDrawdown[0]+r.pensionDrawdown[1])}</td>
       <td>${fmtFull(r.isaWithdrawal[0]+r.isaWithdrawal[1])}</td>
+      <td>${fmtFull(r.cisaWithdrawal[0]+r.cisaWithdrawal[1])}</td>
       <td>${fmtFull(r.dbIncome[0]+r.dbIncome[1]+r.spIncome[0]+r.spIncome[1])}</td>
       <td>${fmtFull(r.pcls[0]+r.pcls[1])}</td>
       <td>${fmtFull(r.totalTaxAll||r.totalTax)}</td>
@@ -1474,12 +1557,19 @@ function generateTips(results, inp) {
   const tips = [];
   const p = inp.persons;
   const totalISA = p[0].isa + p[1].isa;
+  const totalCISA = p[0].cisa + p[1].cisa;
   const totalDC = p[0].dc + p[1].dc;
-  const isaRatio = totalISA / (totalISA + totalDC);
+  // Include Cash ISA in ISA ratio calculation
+  const totalAllISA = totalISA + totalCISA;
+  const isaRatio = totalAllISA / (totalAllISA + totalDC);
   if (isaRatio < 0.15) {
     const potLabel = p[1].active ? 'combined pot' : 'pot';
     const isaMax = p[1].active ? '£20,000/person' : '£20,000';
-    tips.push({ cls: 'info', title: 'ISA Allowance Under-utilised', body: `ISAs represent only ${Math.round(isaRatio*100)}% of your ${potLabel}. Consider maximising the ${isaMax} annual ISA allowance before retirement to build a tax-free income buffer.` });
+    tips.push({ cls: 'info', title: 'ISA Allowance Under-utilised', body: `ISAs (S&S and Cash combined) represent only ${Math.round(isaRatio*100)}% of your ${potLabel}. Consider maximising the ${isaMax} annual ISA allowance before retirement to build a tax-free income buffer.` });
+  }
+  // Tip: large Cash ISA relative to S&S ISA — may be earning less than it could
+  if (totalCISA > 0 && totalCISA > totalISA * 2 && totalCISA > 20000) {
+    tips.push({ cls: 'info', title: 'Consider Moving Cash ISA to S&S ISA', body: `Your Cash ISA balance (${fmt(totalCISA)}) is significantly larger than your S&S ISA. Over long time horizons, investment growth typically outpaces cash interest. Consider an ISA transfer to a Stocks & Shares ISA for higher expected returns.` });
   }
   const yr1 = results[0];
   const startYear = new Date().getFullYear();
