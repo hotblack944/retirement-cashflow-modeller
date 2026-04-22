@@ -1025,8 +1025,10 @@ function runModel() {
         isa[pi] = isa[pi] * (1 + inp.growth) + p[pi].isaContrib;
         // Cash ISA grows at cisaGrowth rate during pre-retirement
         cisa[pi] = cisa[pi] * (1 + inp.cisaGrowth) + p[pi].cisaContrib;
-        continue;
+        // DB pension can start before retirement age — fall through to DB check below
       }
+      // DB pension: pays out from dbAge regardless of employment status.
+      // This allows drawing DB income while still working (e.g. to fund salary sacrifice into DC).
       if (ages[pi] >= p[pi].dbAge && p[pi].db > 0) {
         const useReduced = p[pi].dbReduced > 0 && ages[pi] >= p[pi].dbReducedAge;
         const dbBase = useReduced ? p[pi].dbReduced : p[pi].db;
@@ -1034,6 +1036,7 @@ function runModel() {
         yearData.dbIncome[pi] = dbAmt;
         yearData.income[pi] += dbAmt;
       }
+      if (!isRetired) continue;
       if (ages[pi] >= p[pi].spAge && p[pi].sp > 0) {
         // Triple lock: SP rises each year by the highest of inflation, earnings growth, or 2.5%
         const tripleLockRate = Math.max(inp.inflation, inp.spWageGrowth, TAX.statePensionTriplelock);
@@ -1146,8 +1149,20 @@ function runModel() {
     const taxFreeAlready = yearData.employmentNet;
     let dbSpNet = 0;
     for (let pi = 0; pi < 2; pi++) {
-      if (ages[pi] < p[pi].retAge) continue;
-      dbSpNet += yearData.income[pi] - calcIncomeTax(yearData.income[pi], thresh);
+      const dbAmt = yearData.dbIncome[pi];
+      const spAmt = yearData.spIncome ? yearData.spIncome[pi] : 0;
+      if (dbAmt <= 0 && spAmt <= 0) continue;
+      if (ages[pi] < p[pi].retAge) {
+        // Still employed: DB income is taxed on top of the post-sacrifice salary already computed.
+        // Calculate the marginal after-tax value of the DB income given the existing salary.
+        const taxableSalary = (yearData.employmentGross || 0);
+        const taxWithDb    = calcIncomeTax(taxableSalary + dbAmt, thresh);
+        const taxWithout   = calcIncomeTax(taxableSalary, thresh);
+        dbSpNet += dbAmt - (taxWithDb - taxWithout);
+      } else {
+        // Retired: income array contains DB + SP combined; tax on total retirement income
+        dbSpNet += yearData.income[pi] - calcIncomeTax(yearData.income[pi], thresh);
+      }
     }
     const netNeededFromDrawdown = Math.max(0, realSpend - taxFreeAlready - dbSpNet);
     const order = inp.drawdownOrder;
@@ -1166,8 +1181,8 @@ function runModel() {
     // Helper: draw from both ISA types for a given person, proportionally by balance
     // Cash ISA drawn first as it earns less, so depleting it first is generally rational;
     // but we simply draw proportionally to avoid distorting the asset mix.
+    // ISA withdrawals are tax-free and available at any age, including before retirement.
     const drawISA = (pi, netWanted) => {
-      if (ages[pi] < p[pi].retAge) return 0;
       const totalPiISA = isa[pi] + cisa[pi];
       if (totalPiISA <= 0) return 0;
       const amt = Math.min(totalPiISA, netWanted);
@@ -1366,8 +1381,8 @@ let _lastRenderInp = null;
 
 function destroyChart(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
 function fmt(n) {
-  if (Math.abs(n) >= 1e6) return '£' + (n/1e6).toFixed(2) + 'm';
-  if (Math.abs(n) >= 1e3) return '£' + Math.round(n/1000) + 'k';
+  if (Math.abs(n) >= 1e6) return '£' + (n/1e6).toFixed(Math.abs(n) >= 10e6 ? 1 : 2) + 'm';
+  if (Math.abs(n) >= 1e3) return '£' + (n/1000).toFixed(1) + 'k';
   return '£' + Math.round(n).toLocaleString();
 }
 function fmtFull(n) { return '£' + Math.round(n).toLocaleString(); }
@@ -1419,6 +1434,15 @@ function renderResults(results, inp) {
   const agesP1 = results.map(r => r.ages[0]);
   const agesP2 = results.map(r => r.ages[1]);
   const totalAssets = results.map(r => r.totalAssets);
+  // Tooltip title: only show a person's name+age if they are active
+  const p1active = inp.persons[0].active;
+  const p2active = inp.persons[1].active;
+  const tooltipTitle = i => {
+    const parts = [`${years[i]}`];
+    if (p1active) parts.push(`${n0} age ${agesP1[i]}`);
+    if (p2active) parts.push(`${n1} age ${agesP2[i]}`);
+    return parts.join('  ·  ');
+  };
 
   const lastResult = results[results.length - 1];
   const peakTax = Math.max(...totalTax);
@@ -1564,18 +1588,18 @@ function renderResults(results, inp) {
         responsive: true,
         plugins: { legend: { display: false }, tooltip: {
           callbacks: {
-            title: items => `${years[items[0].dataIndex]}  ·  ${n0} age ${agesP1[items[0].dataIndex]}  ·  ${n1} age ${agesP2[items[0].dataIndex]}`,
+            title: items => tooltipTitle(items[0].dataIndex),
             label: item => item.parsed.y === 0 ? null : ` ${item.dataset.label}: ${fmt(item.parsed.y)}`,
-            // When RLS overlay is active, show which PLSA band the spending falls in
+            // When RLS overlay is active, show which PLSA band the net income falls in
             afterBody: items => {
               if (!rlsShow) return [];
               const i = items[0].dataIndex;
-              const sp = spending[i];
+              const netIncome = results[i].netIncome;
               let band;
-              if (sp >= rlsCom[i])      band = '✦ Above Comfortable';
-              else if (sp >= rlsMod[i]) band = '◆ Moderate – Comfortable';
-              else if (sp >= rlsMin[i]) band = '◇ Minimum – Moderate';
-              else                      band = '△ Below Minimum';
+              if (netIncome >= rlsCom[i])      band = '✦ Above Comfortable';
+              else if (netIncome >= rlsMod[i]) band = '◆ Moderate – Comfortable';
+              else if (netIncome >= rlsMin[i]) band = '◇ Minimum – Moderate';
+              else                              band = '△ Below Minimum';
               return [`PLSA band: ${band}`];
             }
           }
@@ -1608,7 +1632,7 @@ function renderResults(results, inp) {
           boxWidth: 12,
           boxHeight: 12,
           callbacks: {
-            title: items => `${years[items[0].dataIndex]}  ·  ${n0} age ${agesP1[items[0].dataIndex]}  ·  ${n1} age ${agesP2[items[0].dataIndex]}`,
+            title: items => tooltipTitle(items[0].dataIndex),
             label: item => item.parsed.y > 0 ? ` ${item.dataset.label}: ${fmt(item.parsed.y)}` : null,
             footer: items => {
               const i = items[0].dataIndex;
@@ -1666,7 +1690,7 @@ function renderResults(results, inp) {
               borderWidth: 0,
             }]
           },
-          options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#7a8099', font: {size:11}, boxWidth: 12 } } } }
+          options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#7a8099', font: {size:11}, boxWidth: 12 } }, tooltip: { callbacks: { label: item => ` ${item.label}: ${fmt(item.parsed)}` } } } }
         });
       }
     }
